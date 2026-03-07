@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="confirmation-container">
+    <div class="confirmation-card">
+        <div class="success-icon">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="#27ae60" stroke-width="2" fill="none"/>
+                <path d="M8 12L11 15L16 9" stroke="#27ae60" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h1>Booking Confirmed!</h1>
+        <p class="confirmation-message">Your room booking has been successfully confirmed.</p>
+
+        <div class="booking-details">
+            <h3>Booking Details</h3>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="label">Booking ID:</span>
+                    <span class="value">#{{ booking.id }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">Student Name:</span>
+                    <span class="value">{{ booking.student_name }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">Email:</span>
+                    <span class="value">{{ booking.email }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">Hostel:</span>
+                    <span class="value">{{ booking.hostel_name }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">Location:</span>
+                    <span class="value">{{ booking.location }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">Room Type:</span>
+                    <span class="value">{{ booking.room_type }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">Check-in Date:</span>
+                    <span class="value">{{ booking.checkin_date }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">Total Amount:</span>
+                    <span class="value price">฿{{ booking.price }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">Status:</span>
+                    <span class="value status-confirmed">{{ booking.booking_status|title }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="confirmation-actions">
+            <a href="/myunit" class="btn">View My Unit</a>
+            <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+
+<style>
+.confirmation-container {
+    max-width: 800px;
+    margin: 3rem auto;
+    padding: 0 2rem;
+}
+
+.confirmation-card {
+    background: var(--white);
+    padding: 3rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+}
+
+.success-icon {
+    margin: 0 auto 2rem;
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(39, 174, 96, 0.1);
+    border-radius: 50%;
+}
+
+.confirmation-card h1 {
+    color: var(--primary-dark);
+    margin-bottom: 1rem;
+}
+
+.confirmation-message {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    margin-bottom: 3rem;
+}
+
+.booking-details {
+    text-align: left;
+    background: var(--light-gray);
+    padding: 2rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+}
+
+.booking-details h3 {
+    margin-bottom: 1.5rem;
+    color: var(--primary-navy);
+    text-align: center;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.value {
+    font-size: 1.1rem;
+    color: var(--primary-dark);
+}
+
+.price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+}
+
+.status-confirmed {
+    color: #27ae60;
+    font-weight: 600;
+}
+
+.confirmation-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.btn-secondary {
+    background: var(--medium-gray);
+    color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+{% endblock %}

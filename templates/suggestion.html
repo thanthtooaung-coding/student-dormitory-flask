@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="suggestion-container">
+    <div class="page-header">
+        <h1>Send Suggestion</h1>
+        <p>Share your feedback and suggestions</p>
+    </div>
+
+    <form method="POST" class="suggestion-form">
+        <div class="form-group">
+            <label for="suggestion">Your Suggestion <span class="required">*</span></label>
+            <textarea id="suggestion" name="suggestion" rows="8" placeholder="Enter your suggestion or feedback here..." required></textarea>
+        </div>
+
+        <button type="submit" class="btn">Submit Suggestion</button>
+    </form>
+</div>
+
+<style>
+.suggestion-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.suggestion-form {
+    background: var(--white);
+    padding: 3rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+}
+</style>
+
+{% endblock %}

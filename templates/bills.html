@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="bills-container">
+    <div class="page-header">
+        <h1>My Bills</h1>
+        <p>View and pay your bills</p>
+    </div>
+
+    {% if bills %}
+    <div class="bills-list">
+        {% for bill in bills %}
+        <div class="bill-card">
+            <div class="bill-header">
+                <div>
+                    <h3>{{ bill.type }}</h3>
+                    <p class="bill-id">Bill ID: #{{ bill.id }}</p>
+                </div>
+                <span class="amount">฿{{ bill.amount }}</span>
+            </div>
+            <div class="bill-details">
+                <div class="detail-item">
+                    <span>Due Date:</span>
+                    <span class="due-date {% if bill.due_date < today %}overdue{% endif %}">{{ bill.due_date }}</span>
+                </div>
+                <div class="detail-item">
+                    <span>Status:</span>
+                    <span class="status-{{ bill.status or 'pending' }}">{{ (bill.status or 'pending')|title }}</span>
+                </div>
+            </div>
+            {% if (bill.status or 'pending') == 'pending' %}
+            <form method="POST" class="pay-form">
+                <input type="hidden" name="bill_id" value="{{ bill.id }}">
+                <button type="submit" class="btn btn-pay">Pay Now</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-bills">
+        <p>You don't have any bills at this time.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.bills-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.bills-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.bill-card {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    border-left: 4px solid var(--accent-gold);
+}
+
+.bill-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--medium-gray);
+}
+
+.bill-header h3 {
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+.bill-id {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.amount {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+}
+
+.bill-details {
+    margin-bottom: 1.5rem;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    color: var(--text-primary);
+}
+
+.due-date.overdue {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.status-pending {
+    color: var(--accent-gold);
+    font-weight: 600;
+}
+
+.status-paid {
+    color: #27ae60;
+    font-weight: 600;
+}
+
+.btn-pay {
+    width: 100%;
+}
+
+.no-bills {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container">
+
+<h2>Student Login</h2>
+
+<form action="/" method="POST">
+
+<label for="email">Email</label>
+<input type="email"
+id="email"
+name="email"
+pattern="^[a-zA-Z0-9._%+-]+@kmitl\.ac\.th$"
+placeholder="example@kmitl.ac.th"
+required
+class="email-input">
+
+<div class="email-validation" id="emailValidation" style="display: none;">
+    <p class="validation-message" id="emailValidationMessage"></p>
+</div>
+
+<br><br>
+
+<label for="password">Password</label>
+<input type="password"
+id="password"
+name="password"
+placeholder="Enter your password"
+required>
+
+<br><br>
+
+<button class="btn">Login</button>
+
+</form>
+
+<br>
+
+<a href="/signup">Create Account</a>
+
+</div>
+
+<script>
+// Email validation for login
+const emailInput = document.getElementById('email');
+const emailValidation = document.getElementById('emailValidation');
+const emailValidationMessage = document.getElementById('emailValidationMessage');
+const kmitlEmailPattern = /^[a-zA-Z0-9._%+-]+@kmitl\.ac\.th$/;
+
+if (emailInput && emailValidation) {
+    emailInput.addEventListener('input', function() {
+        const email = emailInput.value.trim();
+        
+        if (email.length === 0) {
+            emailValidation.style.display = 'none';
+            emailInput.classList.remove('invalid', 'valid');
+            return;
+        }
+        
+        emailValidation.style.display = 'block';
+        
+        if (kmitlEmailPattern.test(email)) {
+            emailInput.classList.remove('invalid');
+            emailInput.classList.add('valid');
+            emailValidationMessage.textContent = '✓ Valid KMITL email address';
+            emailValidationMessage.className = 'validation-message valid';
+        } else if (email.includes('@')) {
+            emailInput.classList.remove('valid');
+            emailInput.classList.add('invalid');
+            emailValidationMessage.textContent = '✗ Email must end with @kmitl.ac.th';
+            emailValidationMessage.className = 'validation-message invalid';
+        } else {
+            emailInput.classList.remove('valid', 'invalid');
+            emailValidationMessage.textContent = 'Please enter a valid email address';
+            emailValidationMessage.className = 'validation-message';
+        }
+    });
+
+    emailInput.addEventListener('blur', function() {
+        const email = emailInput.value.trim();
+        if (email.length > 0 && !kmitlEmailPattern.test(email)) {
+            emailInput.setCustomValidity('Email must be a valid KMITL email address (@kmitl.ac.th)');
+        } else {
+            emailInput.setCustomValidity('');
+        }
+    });
+}
+</script>
+
+{% endblock %}

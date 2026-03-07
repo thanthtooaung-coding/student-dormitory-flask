@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="hostel-details-container">
+    <div class="hostel-hero">
+        <div class="hostel-info">
+            <h1>{{ hostel.name }}</h1>
+            <div class="hostel-meta">
+                <span class="location-badge">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2Z" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    {{ hostel.location }}
+                </span>
+                {% if hostel.rating %}
+                <span class="rating-badge">
+                    <span>★</span> {{ hostel.rating }}
+                </span>
+                {% endif %}
+                {% if hostel.distance_from_campus %}
+                <span class="distance-badge">{{ hostel.distance_from_campus }} km from campus</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="rooms-section">
+        <h2>Available Rooms</h2>
+        {% if rooms %}
+        <div class="rooms-grid">
+            {% for room in rooms %}
+            <div class="room-card">
+                <div class="room-header">
+                    <h3>{{ room.room_type }} Room</h3>
+                    <span class="price">฿{{ room.price }}/month</span>
+                </div>
+                {% if room.facilities %}
+                <div class="facilities">
+                    <p><strong>Facilities:</strong> {{ room.facilities }}</p>
+                </div>
+                {% endif %}
+                <a href="/room/{{ room.id }}" class="btn">View Details</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="no-rooms">No rooms available at this time.</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.hostel-details-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.hostel-hero {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-navy) 100%);
+    padding: 3rem;
+    border-radius: 16px;
+    margin-bottom: 3rem;
+    color: white;
+}
+
+.hostel-info h1 {
+    color: var(--accent-gold);
+    margin-bottom: 1rem;
+}
+
+.hostel-meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.location-badge, .rating-badge, .distance-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+}
+
+.rating-badge {
+    background: var(--accent-gold);
+    color: var(--primary-dark);
+}
+
+.rooms-section h2 {
+    margin-bottom: 2rem;
+    color: var(--primary-dark);
+}
+
+.rooms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.room-card {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+}
+
+.room-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--medium-gray);
+}
+
+.price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+}
+
+.facilities {
+    margin-bottom: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.no-rooms {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Available Hostels</h1>
+
+{% for hostel in hostels %}
+
+<div>
+<h3>{{ hostel.name }}</h3>
+<p>Location: {{ hostel.location }}</p>
+<p>Price: ${{ hostel.price }}</p>
+<button>Book Room</button>
+</div>
+
+{% endfor %}
+
+{% endblock %}

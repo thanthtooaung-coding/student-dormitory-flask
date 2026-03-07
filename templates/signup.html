@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container">
+
+<h2>Register</h2>
+
+{% if error %}
+<div class="error-message">
+    <p>{{ error }}</p>
+</div>
+{% endif %}
+
+<form action="/signup" method="POST">
+
+<label for="name">Full Name <span class="required">*</span></label>
+<input type="text"
+id="name"
+name="name"
+placeholder="Enter your full name"
+required>
+
+<br><br>
+
+<label for="student_id">Student ID <span class="required">*</span></label>
+<input type="text"
+id="student_id"
+name="student_id"
+placeholder="Enter your student ID (8 digits)"
+required
+pattern="[0-9]{8}"
+maxlength="8"
+class="student-id-input">
+
+<div class="student-id-validation" id="studentIdValidation" style="display: none;">
+    <p class="validation-message" id="studentIdValidationMessage"></p>
+</div>
+
+<br><br>
+
+<label for="email">Email <span class="required">*</span></label>
+<input type="email"
+id="email"
+name="email"
+pattern="^[a-zA-Z0-9._%+-]+@kmitl\.ac\.th$"
+placeholder="example@kmitl.ac.th"
+required
+class="email-input">
+
+<div class="email-validation" id="emailValidation" style="display: none;">
+    <p class="validation-message" id="emailValidationMessage"></p>
+</div>
+
+<br><br>
+
+<label for="password">Password <span class="required">*</span></label>
+<div class="password-input-wrapper">
+    <input type="password"
+    id="password"
+    name="password"
+    placeholder="Enter your password"
+    required
+    class="password-input">
+    <button type="button" class="password-toggle" id="passwordToggle" aria-label="Toggle password visibility">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="eye-icon">
+            <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="eye-off-icon" style="display: none;">
+            <path d="M17.94 17.94C16.2306 19.243 14.1491 19.9649 12 20C5 20 1 12 1 12C2.24389 9.68192 3.96914 7.65663 6.06 6.06M9.9 4.24C10.5883 4.0789 11.2931 3.99836 12 4C19 4 23 12 23 12C22.393 13.1356 21.6691 14.2048 20.84 15.19M14.12 14.12C13.8454 14.4148 13.5141 14.6512 13.1462 14.8151C12.7782 14.9791 12.3809 15.0673 11.9781 15.0744C11.5753 15.0815 11.1751 15.0074 10.8016 14.8565C10.4281 14.7056 10.0887 14.481 9.80385 14.1962C9.51897 13.9113 9.29439 13.5719 9.14351 13.1984C8.99262 12.8249 8.91853 12.4247 8.92563 12.0219C8.93274 11.6191 9.02091 11.2218 9.18488 10.8538C9.34884 10.4859 9.58525 10.1546 9.88 9.88" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M1 1L23 23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </button>
+</div>
+
+<div class="password-requirements">
+    <p class="requirements-title">PASSWORD MUST CONTAIN:</p>
+    <ul class="requirements-list">
+        <li class="requirement" id="req-length">
+            <span class="check-icon"></span>
+            <span class="requirement-text">At least 8 characters</span>
+        </li>
+        <li class="requirement" id="req-uppercase">
+            <span class="check-icon"></span>
+            <span class="requirement-text">At least one uppercase letter</span>
+        </li>
+        <li class="requirement" id="req-lowercase">
+            <span class="check-icon"></span>
+            <span class="requirement-text">At least one lowercase letter</span>
+        </li>
+        <li class="requirement" id="req-number">
+            <span class="check-icon"></span>
+            <span class="requirement-text">At least one number</span>
+        </li>
+    </ul>
+</div>
+
+<br><br>
+
+<button type="submit" class="btn">Register</button>
+
+</form>
+
+<br>
+
+<p>Already have an account? <a href="/">Login here</a></p>
+
+</div>
+
+<script>
+// Password visibility toggle
+const passwordInput = document.getElementById('password');
+const passwordToggle = document.getElementById('passwordToggle');
+const eyeIcon = passwordToggle.querySelector('.eye-icon');
+const eyeOffIcon = passwordToggle.querySelector('.eye-off-icon');
+
+passwordToggle.addEventListener('click', function() {
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeIcon.style.display = 'none';
+        eyeOffIcon.style.display = 'block';
+    } else {
+        passwordInput.type = 'password';
+        eyeIcon.style.display = 'block';
+        eyeOffIcon.style.display = 'none';
+    }
+});
+
+// Password validation
+passwordInput.addEventListener('input', function() {
+    const password = passwordInput.value;
+    
+    // Check length
+    const reqLength = document.getElementById('req-length');
+    if (password.length >= 8) {
+        reqLength.classList.add('valid');
+    } else {
+        reqLength.classList.remove('valid');
+    }
+    
+    // Check uppercase
+    const reqUppercase = document.getElementById('req-uppercase');
+    if (/[A-Z]/.test(password)) {
+        reqUppercase.classList.add('valid');
+    } else {
+        reqUppercase.classList.remove('valid');
+    }
+    
+    // Check lowercase
+    const reqLowercase = document.getElementById('req-lowercase');
+    if (/[a-z]/.test(password)) {
+        reqLowercase.classList.add('valid');
+    } else {
+        reqLowercase.classList.remove('valid');
+    }
+    
+    // Check number
+    const reqNumber = document.getElementById('req-number');
+    if (/[0-9]/.test(password)) {
+        reqNumber.classList.add('valid');
+    } else {
+        reqNumber.classList.remove('valid');
+    }
+});
+
+// Student ID validation
+const studentIdInput = document.getElementById('student_id');
+const studentIdValidation = document.getElementById('studentIdValidation');
+const studentIdValidationMessage = document.getElementById('studentIdValidationMessage');
+const studentIdPattern = /^[0-9]{8}$/;
+let duplicateCheckTimeout;
+
+// Function to check for duplicate student ID
+function checkDuplicateStudentId(studentId) {
+    // Clear previous timeout
+    clearTimeout(duplicateCheckTimeout);
+    
+    // Debounce the API call
+    duplicateCheckTimeout = setTimeout(() => {
+        fetch(`/check-student-id?student_id=${studentId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    studentIdInput.classList.remove('valid');
+                    studentIdInput.classList.add('invalid');
+                    studentIdValidationMessage.textContent = '✗ Student ID already exists';
+                    studentIdValidationMessage.className = 'validation-message invalid';
+                } else {
+                    studentIdInput.classList.remove('invalid');
+                    studentIdInput.classList.add('valid');
+                    studentIdValidationMessage.textContent = '✓ Valid student ID';
+                    studentIdValidationMessage.className = 'validation-message valid';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking student ID:', error);
+            });
+    }, 500); // Wait 500ms after user stops typing
+}
+
+// Only allow numbers
+studentIdInput.addEventListener('input', function() {
+    // Remove any non-numeric characters
+    this.value = this.value.replace(/[^0-9]/g, '');
+    
+    const studentId = this.value;
+    
+    if (studentId.length === 0) {
+        studentIdValidation.style.display = 'none';
+        studentIdInput.classList.remove('invalid', 'valid');
+        clearTimeout(duplicateCheckTimeout);
+        return;
+    }
+    
+    studentIdValidation.style.display = 'block';
+    
+    if (studentIdPattern.test(studentId)) {
+        // Check for duplicate student ID
+        checkDuplicateStudentId(studentId);
+    } else if (studentId.length < 8) {
+        studentIdInput.classList.remove('valid');
+        studentIdInput.classList.add('invalid');
+        studentIdValidationMessage.textContent = `✗ Student ID must be 8 digits (${studentId.length}/8)`;
+        studentIdValidationMessage.className = 'validation-message invalid';
+    } else {
+        studentIdInput.classList.remove('valid');
+        studentIdInput.classList.add('invalid');
+        studentIdValidationMessage.textContent = '✗ Student ID must be exactly 8 digits';
+        studentIdValidationMessage.className = 'validation-message invalid';
+    }
+});
+
+studentIdInput.addEventListener('blur', function() {
+    const studentId = this.value;
+    if (studentId.length > 0 && !studentIdPattern.test(studentId)) {
+        this.setCustomValidity('Student ID must be exactly 8 digits');
+    } else {
+        this.setCustomValidity('');
+    }
+});
+
+// Email validation
+const emailInput = document.getElementById('email');
+const emailValidation = document.getElementById('emailValidation');
+const emailValidationMessage = document.getElementById('emailValidationMessage');
+const kmitlEmailPattern = /^[a-zA-Z0-9._%+-]+@kmitl\.ac\.th$/;
+let emailDuplicateCheckTimeout;
+
+// Function to check for duplicate email
+function checkDuplicateEmail(email) {
+    // Clear previous timeout
+    clearTimeout(emailDuplicateCheckTimeout);
+    
+    // Debounce the API call
+    emailDuplicateCheckTimeout = setTimeout(() => {
+        fetch(`/check-email?email=${encodeURIComponent(email)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    emailInput.classList.remove('valid');
+                    emailInput.classList.add('invalid');
+                    emailValidationMessage.textContent = '✗ Email already exists';
+                    emailValidationMessage.className = 'validation-message invalid';
+                } else {
+                    emailInput.classList.remove('invalid');
+                    emailInput.classList.add('valid');
+                    emailValidationMessage.textContent = '✓ Valid KMITL email address';
+                    emailValidationMessage.className = 'validation-message valid';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking email:', error);
+            });
+    }, 500); // Wait 500ms after user stops typing
+}
+
+emailInput.addEventListener('input', function() {
+    const email = emailInput.value.trim();
+    
+    if (email.length === 0) {
+        emailValidation.style.display = 'none';
+        emailInput.classList.remove('invalid', 'valid');
+        clearTimeout(emailDuplicateCheckTimeout);
+        return;
+    }
+    
+    emailValidation.style.display = 'block';
+    
+    if (kmitlEmailPattern.test(email)) {
+        // Check for duplicate email
+        checkDuplicateEmail(email);
+    } else if (email.includes('@')) {
+        emailInput.classList.remove('valid');
+        emailInput.classList.add('invalid');
+        emailValidationMessage.textContent = '✗ Email must end with @kmitl.ac.th';
+        emailValidationMessage.className = 'validation-message invalid';
+        clearTimeout(emailDuplicateCheckTimeout);
+    } else {
+        emailInput.classList.remove('valid', 'invalid');
+        emailValidationMessage.textContent = 'Please enter a valid email address';
+        emailValidationMessage.className = 'validation-message';
+        clearTimeout(emailDuplicateCheckTimeout);
+    }
+});
+
+emailInput.addEventListener('blur', function() {
+    const email = emailInput.value.trim();
+    if (email.length > 0 && !kmitlEmailPattern.test(email)) {
+        emailInput.setCustomValidity('Email must be a valid KMITL email address (@kmitl.ac.th)');
+    } else {
+        emailInput.setCustomValidity('');
+    }
+});
+</script>
+
+{% endblock %}

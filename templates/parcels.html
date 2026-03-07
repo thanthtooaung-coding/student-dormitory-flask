@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="parcels-container">
+    <div class="page-header">
+        <h1>Track Parcels</h1>
+        <p>View your parcel delivery status</p>
+    </div>
+
+    {% if parcels %}
+    <div class="parcels-list">
+        {% for parcel in parcels %}
+        <div class="parcel-card">
+            <div class="parcel-header">
+                <div>
+                    <h3>Parcel #{{ parcel.id }}</h3>
+                    <p class="sender">From: {{ parcel.sender }}</p>
+                </div>
+                <span class="status-badge status-{{ parcel.status }}">{{ parcel.status|replace('_', ' ')|title }}</span>
+            </div>
+            <div class="parcel-details">
+                <div class="detail-item">
+                    <span>Arrival Date:</span>
+                    <span>{{ parcel.arrival_date }}</span>
+                </div>
+                <div class="detail-item">
+                    <span>Status:</span>
+                    <span class="status-{{ parcel.status }}">{{ parcel.status|replace('_', ' ')|title }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-parcels">
+        <p>You don't have any parcels at this time.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.parcels-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.parcels-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.parcel-card {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    border-left: 4px solid var(--primary-blue);
+}
+
+.parcel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--medium-gray);
+}
+
+.parcel-header h3 {
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+.sender {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.status-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-pending {
+    background: rgba(244, 162, 97, 0.1);
+    color: var(--accent-gold);
+}
+
+.status-arrived {
+    background: rgba(52, 152, 219, 0.1);
+    color: #3498db;
+}
+
+.status-picked_up {
+    background: rgba(39, 174, 96, 0.1);
+    color: #27ae60;
+}
+
+.parcel-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.detail-item span:first-child {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.detail-item span:last-child {
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.no-parcels {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+}
+</style>
+
+{% endblock %}

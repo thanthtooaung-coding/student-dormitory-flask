@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="rules-container">
+    <div class="page-header">
+        <h1>Community Rules</h1>
+        <p>Please read and follow these community guidelines</p>
+    </div>
+
+    <div class="rules-content">
+        <div class="rule-section">
+            <h3>General Rules</h3>
+            <ul class="rules-list">
+                <li>Respect all residents and staff members</li>
+                <li>Keep noise levels reasonable, especially during quiet hours (10 PM - 7 AM)</li>
+                <li>Maintain cleanliness in common areas</li>
+                <li>No smoking or alcohol consumption in dormitory premises</li>
+                <li>Follow all safety and security protocols</li>
+            </ul>
+        </div>
+
+        <div class="rule-section">
+            <h3>Room Regulations</h3>
+            <ul class="rules-list">
+                <li>Keep your room clean and organized</li>
+                <li>Report any damages or maintenance issues immediately</li>
+                <li>No unauthorized room modifications</li>
+                <li>Respect roommate privacy and space</li>
+                <li>Follow check-in and check-out procedures</li>
+            </ul>
+        </div>
+
+        <div class="rule-section">
+            <h3>Visitor Policy</h3>
+            <ul class="rules-list">
+                <li>All visitors must be registered in advance</li>
+                <li>Visitors are allowed only during designated hours (8 AM - 10 PM)</li>
+                <li>Residents are responsible for their visitors' behavior</li>
+                <li>Overnight visitors require prior approval</li>
+            </ul>
+        </div>
+
+        <div class="rule-section">
+            <h3>Facility Usage</h3>
+            <ul class="rules-list">
+                <li>Book facilities in advance through the system</li>
+                <li>Clean up after using common facilities</li>
+                <li>Report any facility issues or damages</li>
+                <li>Follow facility-specific rules and guidelines</li>
+            </ul>
+        </div>
+
+        <div class="rule-section">
+            <h3>Payment & Bills</h3>
+            <ul class="rules-list">
+                <li>Pay all bills by the due date</li>
+                <li>Late payments may incur penalties</li>
+                <li>Contact management for payment issues</li>
+                <li>Keep receipts for all payments</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+.rules-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.rules-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.rule-section {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    border-top: 4px solid var(--accent-gold);
+}
+
+.rule-section h3 {
+    color: var(--primary-navy);
+    margin-bottom: 1.5rem;
+    font-size: 1.3rem;
+}
+
+.rules-list {
+    list-style: none;
+    padding: 0;
+}
+
+.rules-list li {
+    padding: 0.75rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.rules-list li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--accent-gold);
+    font-weight: bold;
+}
+</style>
+
+{% endblock %}

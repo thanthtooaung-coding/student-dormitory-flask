@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>KMITL StayLink</title>
+
+    <link rel="stylesheet"
+    href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<!-- Navbar -->
+<div class="navbar">
+    <div class="navbar-brand">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="KMITL StayLink Logo" class="logo">
+        <h2>KMITL StayLink</h2>
+    </div>
+
+    <div class="nav-links">
+        {% if session.student_id %}
+            <a href="/search">Search Hostel</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/myunit">My Unit</a>
+            <a href="/bills">Bills</a>
+            <a href="/parcels">Parcels</a>
+            <div class="user-menu">
+                <span class="user-name">{{ session.student_name }}</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        {% else %}
+            <a href="/">Home</a>
+            <a href="/search">Search</a>
+            <a href="/login">Login</a>
+            <a href="/signup" class="signup-btn">Sign Up</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+                <div class="flash-message flash-{{ category }}">
+                    <span>{{ message }}</span>
+                    <button class="flash-close" onclick="this.parentElement.remove()">×</button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<!-- Page Content -->
+{% block content %}
+{% endblock %}
+
+<!-- Premium Footer -->
+<footer class="premium-footer">
+    <div class="footer-content">
+        <div class="footer-section">
+            <h3>KMITL StayLink</h3>
+            <p>Your trusted platform for student dormitory management</p>
+        </div>
+        
+        <div class="footer-section">
+            <h4>Quick Links</h4>
+            <ul>
+                <li><a href="/search">Search Hostels</a></li>
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/rules">Community Rules</a></li>
+                <li><a href="/suggestion">Send Feedback</a></li>
+            </ul>
+        </div>
+        
+        <div class="footer-section">
+            <h4>Support</h4>
+            <ul>
+                <li><a href="/chat">Contact Manager</a></li>
+                <li><a href="/repair">Repair Request</a></li>
+                <li><a href="/facility">Book Facilities</a></li>
+                <li><a href="/visitor">Register Visitor</a></li>
+            </ul>
+        </div>
+        
+        <div class="footer-section">
+            <h4>Contact</h4>
+            <p>Email: support@kmitl.ac.th</p>
+            <p>Phone: +66 XX XXX XXXX</p>
+        </div>
+    </div>
+    
+    <div class="footer-bottom">
+        <div class="footer-copyright">
+            <p>&copy; {{ current_year }} KMITL StayLink. All rights reserved.</p>
+            <p class="team-name">Developed by <span class="genius">Genius</span> Team</p>
+        </div>
+    </div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const yearElements = document.querySelectorAll('.current-year');
+    const currentYear = new Date().getFullYear();
+    yearElements.forEach(el => el.textContent = currentYear);
+});
+
+function toggleMenu(button) {
+    const menu = button.nextElementSibling;
+    const isOpen = menu.classList.contains('show');
+    
+    document.querySelectorAll('.menu-dropdown').forEach(m => {
+        m.classList.remove('show');
+    });
+    
+    if (!isOpen) {
+        menu.classList.add('show');
+    }
+}
+
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.menu-container')) {
+        document.querySelectorAll('.menu-dropdown').forEach(menu => {
+            menu.classList.remove('show');
+        });
+    }
+});
+</script>
+
+</body>
+</html>

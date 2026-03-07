@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="booking-container">
+    <div class="booking-header">
+        <h1>Book Room</h1>
+        <p>Complete your booking details</p>
+    </div>
+
+    <div class="booking-content">
+        <div class="room-summary">
+            <h3>Room Summary</h3>
+            <div class="summary-card">
+                <p><strong>Hostel:</strong> {{ room.hostel_name }}</p>
+                <p><strong>Location:</strong> {{ room.location }}</p>
+                <p><strong>Room Type:</strong> {{ room.room_type }}</p>
+                <p><strong>Price:</strong> <span class="price">฿{{ room.price }}/month</span></p>
+            </div>
+        </div>
+
+        <form method="POST" class="booking-form">
+            <div class="form-group">
+                <label for="checkin_date">Check-in Date <span class="required">*</span></label>
+                <input type="date" id="checkin_date" name="checkin_date" required>
+                <div class="date-validation" id="dateValidation" style="display: none;">
+                    <p class="validation-message" id="dateValidationMessage"></p>
+                </div>
+            </div>
+
+<script>
+(function() {
+    const checkinDateInput = document.getElementById('checkin_date');
+    const dateValidation = document.getElementById('dateValidation');
+    const dateValidationMessage = document.getElementById('dateValidationMessage');
+    const today = new Date().toISOString().split('T')[0];
+    
+    checkinDateInput.setAttribute('min', today);
+    
+    checkinDateInput.addEventListener('input', function() {
+        const selectedDate = this.value;
+        
+        if (selectedDate.length === 0) {
+            dateValidation.style.display = 'none';
+            checkinDateInput.classList.remove('invalid', 'valid');
+            return;
+        }
+        
+        dateValidation.style.display = 'block';
+        
+        if (selectedDate < today) {
+            checkinDateInput.classList.remove('valid');
+            checkinDateInput.classList.add('invalid');
+            dateValidationMessage.textContent = '✗ Cannot book rooms for past dates';
+            dateValidationMessage.className = 'validation-message invalid';
+        } else {
+            checkinDateInput.classList.remove('invalid');
+            checkinDateInput.classList.add('valid');
+            dateValidationMessage.textContent = '✓ Valid check-in date';
+            dateValidationMessage.className = 'validation-message valid';
+        }
+    });
+    
+    checkinDateInput.addEventListener('change', function() {
+        const selectedDate = this.value;
+        if (selectedDate < today) {
+            this.setCustomValidity('Cannot book rooms for past dates');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+})();
+</script>
+
+            <div class="booking-actions">
+                <a href="/room/{{ room.id }}" class="btn btn-secondary">Back</a>
+                <button type="submit" class="btn">Continue to Payment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.booking-container {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.booking-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.booking-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.room-summary h3 {
+    margin-bottom: 1rem;
+    color: var(--primary-navy);
+}
+
+.summary-card {
+    background: var(--light-gray);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 2px solid var(--medium-gray);
+}
+
+.summary-card p {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+}
+
+.booking-form {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.booking-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.btn-secondary {
+    background: var(--medium-gray);
+    color: var(--text-primary);
+    flex: 1;
+}
+
+@media (max-width: 768px) {
+    .booking-content {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+{% endblock %}

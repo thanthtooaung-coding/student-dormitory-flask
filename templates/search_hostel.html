@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="search-container">
+    <div class="search-header">
+        <h1>Search Hostels</h1>
+        <p>Find your perfect dormitory</p>
+    </div>
+
+    <div class="search-wrapper">
+        <div class="search-bar-container">
+            <div class="search-bar-wrapper">
+                <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <input type="text" id="search-input" class="search-input" placeholder="Search hostels by name, location..." autocomplete="off">
+                <button type="button" class="filter-toggle-btn" id="filterToggle">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span id="filterToggleText">Show filters</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="filters-panel" id="filtersPanel" style="display: none;">
+            <form method="POST" action="/search" id="searchForm">
+                <div class="filters-grid">
+                    <div class="filter-item">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" name="location" placeholder="Any" value="{{ request.form.get('location', '') }}">
+                    </div>
+
+                    <div class="filter-item">
+                        <label for="room_type">Room Type</label>
+                        <select id="room_type" name="room_type">
+                            <option value="">Any</option>
+                            <option value="Single" {% if request.form.get('room_type') == 'Single' %}selected{% endif %}>Single</option>
+                            <option value="Double" {% if request.form.get('room_type') == 'Double' %}selected{% endif %}>Double</option>
+                            <option value="Triple" {% if request.form.get('room_type') == 'Triple' %}selected{% endif %}>Triple</option>
+                            <option value="Quad" {% if request.form.get('room_type') == 'Quad' %}selected{% endif %}>Quad</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-item">
+                        <label for="max_price">Max Price (฿)</label>
+                        <input type="number" id="max_price" name="max_price" placeholder="Any" min="0" value="{{ request.form.get('max_price', '') }}">
+                    </div>
+
+                    <div class="filter-item">
+                        <label for="min_rating">Min Rating</label>
+                        <input type="number" id="min_rating" name="min_rating" placeholder="Any" min="0" max="5" step="0.1" value="{{ request.form.get('min_rating', '') }}">
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button type="button" class="btn-reset" onclick="resetFilters()">Reset filters</button>
+                    <button type="button" class="btn-lucky" onclick="randomSearch()">I'm feeling lucky</button>
+                    <button type="submit" class="btn-search-submit">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>Search</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="search-results">
+            {% if hostels %}
+                <div class="results-grid">
+                    {% for hostel in hostels %}
+                    <div class="hostel-card">
+                        <div class="hostel-image">
+                            <div class="rating-badge">
+                                <span>★</span> {{ hostel.rating or 'N/A' }}
+                            </div>
+                        </div>
+                        <div class="hostel-content">
+                            <h3>{{ hostel.name }}</h3>
+                            <p class="location">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2Z" stroke="currentColor" stroke-width="2"/>
+                                    <circle cx="12" cy="9" r="3" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                                {{ hostel.location }}
+                            </p>
+                            {% if hostel.distance_from_campus %}
+                            <p class="distance">Distance: {{ hostel.distance_from_campus }} km</p>
+                            {% endif %}
+                            <a href="/hostel/{{ hostel.id }}" class="btn btn-view">View Details</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-results">
+                    <p>No hostels found. Try adjusting your filters.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.search-container {
+    max-width: 1400px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.search-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.search-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--primary-dark);
+}
+
+.search-header p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+.search-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.search-bar-container {
+    width: 100%;
+}
+
+.search-bar-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--white);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--medium-gray);
+    transition: all 0.3s ease;
+}
+
+.search-bar-wrapper:focus-within {
+    border-color: var(--accent-gold);
+    box-shadow: var(--shadow-gold);
+}
+
+.search-icon {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    color: var(--text-primary);
+    background: transparent;
+    height: 44px;
+    line-height: 44px;
+}
+
+.search-input::placeholder {
+    color: var(--text-secondary);
+}
+
+.filter-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0 1rem;
+    background: var(--medium-gray);
+    color: var(--text-primary);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    height: 44px;
+}
+
+.filter-toggle-btn:hover {
+    background: var(--primary-navy);
+    color: var(--white);
+}
+
+.filter-toggle-btn svg {
+    transition: transform 0.3s ease;
+}
+
+.filter-toggle-btn.active svg {
+    transform: rotate(180deg);
+}
+
+.filters-panel {
+    background: var(--white);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    padding: 1.5rem;
+    border: 2px solid var(--medium-gray);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-item label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-item input,
+.filter-item select {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 2px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    background: var(--white);
+    transition: all 0.3s ease;
+}
+
+.filter-item input:focus,
+.filter-item select:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+    box-shadow: var(--shadow-gold);
+}
+
+.filter-item input::placeholder {
+    color: var(--text-secondary);
+}
+
+.filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.btn-reset {
+    padding: 0.6rem 1.2rem;
+    background: #e74c3c;
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-reset:hover {
+    background: #c0392b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+.btn-lucky {
+    padding: 0.6rem 1.2rem;
+    background: var(--medium-gray);
+    color: var(--text-primary);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-lucky:hover {
+    background: var(--primary-navy);
+    color: var(--white);
+    transform: translateY(-1px);
+}
+
+.btn-search-submit {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.5rem;
+    background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-search-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-gold);
+}
+
+.btn-search-submit svg {
+    width: 16px;
+    height: 16px;
+}
+
+.search-results {
+    margin-top: 1rem;
+}
+
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2rem;
+}
+
+.hostel-card {
+    background: var(--white);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.hostel-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--accent-gold);
+}
+
+.hostel-image {
+    height: 200px;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-navy) 100%);
+    position: relative;
+}
+
+.rating-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: var(--accent-gold);
+    color: var(--white);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    box-shadow: var(--shadow-md);
+}
+
+.hostel-content {
+    padding: 1.5rem;
+}
+
+.hostel-content h3 {
+    margin-bottom: 0.5rem;
+    color: var(--primary-dark);
+    font-size: 1.3rem;
+}
+
+.location {
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.distance {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.btn-view {
+    width: 100%;
+    text-align: center;
+    margin-top: 0.5rem;
+}
+
+.no-results {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-secondary);
+    background: var(--white);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 768px) {
+    .search-container {
+        padding: 0 1rem;
+    }
+
+    .search-bar-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-toggle-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .filters-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-actions {
+        flex-direction: column;
+    }
+
+    .filter-actions button {
+        width: 100%;
+    }
+
+    .results-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterToggle = document.getElementById('filterToggle');
+    const filtersPanel = document.getElementById('filtersPanel');
+    const filterToggleText = document.getElementById('filterToggleText');
+    const searchInput = document.getElementById('search-input');
+    const searchForm = document.getElementById('searchForm');
+
+    filterToggle.addEventListener('click', function() {
+        const isVisible = filtersPanel.style.display !== 'none';
+        filtersPanel.style.display = isVisible ? 'none' : 'block';
+        filterToggle.classList.toggle('active');
+        filterToggleText.textContent = isVisible ? 'Show filters' : 'Hide filters';
+    });
+
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            searchForm.submit();
+        }
+    });
+});
+
+function resetFilters() {
+    document.getElementById('location').value = '';
+    document.getElementById('room_type').value = '';
+    document.getElementById('max_price').value = '';
+    document.getElementById('min_rating').value = '';
+    document.getElementById('search-input').value = '';
+}
+
+function randomSearch() {
+    const locations = ['Bangkok', 'Pathum Thani', 'Nonthaburi', 'Samut Prakan'];
+    const roomTypes = ['Single', 'Double', 'Triple', 'Quad'];
+    
+    document.getElementById('location').value = locations[Math.floor(Math.random() * locations.length)];
+    document.getElementById('room_type').value = roomTypes[Math.floor(Math.random() * roomTypes.length)];
+    document.getElementById('max_price').value = Math.floor(Math.random() * 10000) + 5000;
+    document.getElementById('min_rating').value = (Math.random() * 2 + 3).toFixed(1);
+    
+    document.getElementById('searchForm').submit();
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="room-details-container">
+    <div class="room-header-section">
+        <div class="breadcrumb">
+            <a href="/search">Search</a> / 
+            <a href="/hostel/{{ room.hostel_id }}">{{ room.hostel_name }}</a> / 
+            <span>Room Details</span>
+        </div>
+        <h1>{{ room.room_type }} Room</h1>
+        <div class="room-meta">
+            <span class="hostel-name">{{ room.hostel_name }}</span>
+            <span class="location">{{ room.location }}</span>
+            {% if room.rating %}
+            <span class="rating">★ {{ room.rating }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="room-content">
+        <div class="room-info-card">
+            <h2>Room Information</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="label">Room Type:</span>
+                    <span class="value">{{ room.room_type }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Price:</span>
+                    <span class="value price-highlight">฿{{ room.price }}/month</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Availability:</span>
+                    <span class="value {% if room.available %}available{% else %}unavailable{% endif %}">
+                        {% if room.available %}Available{% else %}Unavailable{% endif %}
+                    </span>
+                </div>
+                {% if room.facilities %}
+                <div class="info-item full-width">
+                    <span class="label">Facilities:</span>
+                    <span class="value">{{ room.facilities }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if room.available %}
+            <a href="/booking/{{ room.id }}" class="btn btn-book">Book This Room</a>
+            {% else %}
+            <button class="btn btn-disabled" disabled>Room Unavailable</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.room-details-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.breadcrumb {
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+}
+
+.breadcrumb a {
+    color: var(--accent-gold);
+    text-decoration: none;
+}
+
+.room-header-section {
+    margin-bottom: 3rem;
+}
+
+.room-header-section h1 {
+    margin: 1rem 0;
+    color: var(--primary-dark);
+}
+
+.room-meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    color: var(--text-secondary);
+}
+
+.room-content {
+    background: var(--white);
+    padding: 3rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+}
+
+.room-info-card h2 {
+    margin-bottom: 2rem;
+    color: var(--primary-navy);
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.info-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.value {
+    font-size: 1.1rem;
+    color: var(--primary-dark);
+}
+
+.price-highlight {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+}
+
+.available {
+    color: #27ae60;
+    font-weight: 600;
+}
+
+.unavailable {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.btn-book {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.btn-disabled {
+    width: 100%;
+    background: var(--medium-gray);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+</style>
+
+{% endblock %}

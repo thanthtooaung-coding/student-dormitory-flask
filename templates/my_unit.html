@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="my-unit-container">
+    <div class="page-header">
+        <h1>My Unit</h1>
+        <p>View your current bookings and room information</p>
+    </div>
+
+    {% if bookings %}
+    <div class="bookings-grid">
+        {% for booking in bookings %}
+        <div class="booking-card">
+            <div class="booking-header">
+                <h3>{{ booking.hostel_name }}</h3>
+                <span class="status-badge status-{{ booking.booking_status }}">{{ booking.booking_status|title }}</span>
+            </div>
+            <div class="booking-details">
+                <div class="detail-row">
+                    <span class="label">Location:</span>
+                    <span class="value">{{ booking.location }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Room Type:</span>
+                    <span class="value">{{ booking.room_type }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Check-in Date:</span>
+                    <span class="value">{{ booking.checkin_date }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Monthly Rent:</span>
+                    <span class="value price">฿{{ booking.price }}</span>
+                </div>
+                {% if booking.rating %}
+                <div class="detail-row">
+                    <span class="label">Hostel Rating:</span>
+                    <span class="value">★ {{ booking.rating }}</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="booking-actions">
+                <a href="/bills" class="btn btn-small">View Bills</a>
+                <a href="/parcels" class="btn btn-small">Track Parcels</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-bookings">
+        <p>You don't have any active bookings yet.</p>
+        <a href="/search" class="btn">Search Hostels</a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.my-unit-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.bookings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+}
+
+.booking-card {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+}
+
+.booking-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.booking-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--medium-gray);
+}
+
+.status-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-confirmed {
+    background: rgba(39, 174, 96, 0.1);
+    color: #27ae60;
+}
+
+.status-pending {
+    background: rgba(244, 162, 97, 0.1);
+    color: var(--accent-gold);
+}
+
+.booking-details {
+    margin-bottom: 1.5rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.value {
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.price {
+    color: var(--accent-gold);
+    font-size: 1.2rem;
+}
+
+.booking-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-small {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+}
+
+.no-bookings {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+}
+
+.no-bookings p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="facility-container">
+    <div class="page-header">
+        <h1>Book Facilities</h1>
+        <p>Reserve facilities and amenities</p>
+    </div>
+
+    <div class="facility-content">
+        <form method="POST" action="/facility" class="facility-form">
+            {% if editing_booking %}
+            <input type="hidden" name="booking_id" value="{{ editing_booking.id }}">
+            <input type="hidden" name="action" value="edit">
+            <h3>Edit Facility Booking</h3>
+            {% else %}
+            <h3>Book New Facility</h3>
+            {% endif %}
+            
+            <div class="form-group">
+                <label for="facility_name">Facility Name <span class="required">*</span></label>
+                <select id="facility_name" name="facility_name" required>
+                    <option value="">Select a facility</option>
+                    <option value="Gym" {% if editing_booking and editing_booking.facility_name == 'Gym' %}selected{% endif %}>Gym</option>
+                    <option value="Swimming Pool" {% if editing_booking and editing_booking.facility_name == 'Swimming Pool' %}selected{% endif %}>Swimming Pool</option>
+                    <option value="Study Room" {% if editing_booking and editing_booking.facility_name == 'Study Room' %}selected{% endif %}>Study Room</option>
+                    <option value="Common Area" {% if editing_booking and editing_booking.facility_name == 'Common Area' %}selected{% endif %}>Common Area</option>
+                    <option value="Laundry Room" {% if editing_booking and editing_booking.facility_name == 'Laundry Room' %}selected{% endif %}>Laundry Room</option>
+                    <option value="Kitchen" {% if editing_booking and editing_booking.facility_name == 'Kitchen' %}selected{% endif %}>Kitchen</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="booking_date">Booking Date <span class="required">*</span></label>
+                <input type="date" id="booking_date" name="booking_date" value="{% if editing_booking %}{{ editing_booking.booking_date }}{% endif %}" required>
+                <div class="date-validation" id="dateValidation" style="display: none;">
+                    <p class="validation-message" id="dateValidationMessage"></p>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                {% if editing_booking %}
+                <button type="submit" class="btn">Update Booking</button>
+                <a href="/facility" class="btn btn-secondary">Cancel</a>
+                {% else %}
+                <button type="submit" class="btn">Book Facility</button>
+                {% endif %}
+            </div>
+        </form>
+
+<script>
+(function() {
+    const bookingDateInput = document.getElementById('booking_date');
+    const dateValidation = document.getElementById('dateValidation');
+    const dateValidationMessage = document.getElementById('dateValidationMessage');
+    const today = new Date().toISOString().split('T')[0];
+    
+    bookingDateInput.setAttribute('min', today);
+    
+    bookingDateInput.addEventListener('input', function() {
+        const selectedDate = this.value;
+        
+        if (selectedDate.length === 0) {
+            dateValidation.style.display = 'none';
+            bookingDateInput.classList.remove('invalid', 'valid');
+            return;
+        }
+        
+        dateValidation.style.display = 'block';
+        
+        if (selectedDate < today) {
+            bookingDateInput.classList.remove('valid');
+            bookingDateInput.classList.add('invalid');
+            dateValidationMessage.textContent = '✗ Cannot book facilities for past dates';
+            dateValidationMessage.className = 'validation-message invalid';
+        } else {
+            bookingDateInput.classList.remove('invalid');
+            bookingDateInput.classList.add('valid');
+            dateValidationMessage.textContent = '✓ Valid booking date';
+            dateValidationMessage.className = 'validation-message valid';
+        }
+    });
+    
+    bookingDateInput.addEventListener('change', function() {
+        const selectedDate = this.value;
+        if (selectedDate < today) {
+            this.setCustomValidity('Cannot book facilities for past dates');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+})();
+</script>
+
+        {% if bookings %}
+        <div class="bookings-section">
+            <h3>My Facility Bookings</h3>
+            <div class="bookings-list">
+                {% for booking in bookings %}
+                <div class="booking-item">
+                    <div class="booking-info">
+                        <h4>{{ booking.facility_name }}</h4>
+                        <p>Date: {{ booking.booking_date }}</p>
+                    </div>
+                    <div class="booking-actions">
+                        <div class="menu-container">
+                            <button type="button" class="menu-toggle" onclick="toggleMenu(this)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="6" r="1.5" fill="currentColor"/>
+                                    <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+                                    <circle cx="12" cy="18" r="1.5" fill="currentColor"/>
+                                </svg>
+                            </button>
+                            <div class="menu-dropdown">
+                                <a href="/facility/edit/{{ booking.id }}" class="menu-item">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                        <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M18.5 2.5C18.8978 2.10218 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10218 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10218 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>Edit</span>
+                                </a>
+                                <form method="POST" style="display: contents;" onsubmit="return confirm('Are you sure you want to delete this booking?');">
+                                    <input type="hidden" name="booking_id" value="{{ booking.id }}">
+                                    <input type="hidden" name="action" value="delete">
+                                    <button type="submit" class="menu-item menu-item-danger">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <path d="M3 6H5H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                            <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                        <span>Delete</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.facility-container {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.facility-form {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 3rem;
+}
+
+.bookings-section {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+}
+
+.bookings-section h3 {
+    margin-bottom: 1.5rem;
+    color: var(--primary-navy);
+}
+
+.bookings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.booking-item {
+    padding: 1.5rem;
+    background: var(--light-gray);
+    border-radius: 12px;
+    border-left: 4px solid var(--accent-gold);
+}
+
+.booking-info {
+    flex: 1;
+}
+
+.booking-info h4 {
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+.booking-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.booking-actions {
+    position: relative;
+}
+
+.menu-container {
+    position: relative;
+}
+
+.menu-toggle {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-toggle:hover {
+    background: var(--medium-gray);
+    color: var(--primary-navy);
+}
+
+.menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    background: var(--white);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--medium-gray);
+    min-width: 150px;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+}
+
+.menu-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.menu-item:first-child {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.menu-item:last-child {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.menu-item:hover {
+    background: var(--light-gray);
+    color: var(--primary-navy);
+}
+
+.menu-item svg {
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    transition: color 0.2s ease;
+}
+
+.menu-item:hover svg {
+    color: var(--primary-navy);
+}
+
+.menu-item-danger {
+    color: #e74c3c;
+}
+
+.menu-item-danger:hover {
+    background: rgba(231, 76, 60, 0.1);
+    color: #c0392b;
+}
+
+.menu-item-danger svg {
+    color: #e74c3c;
+}
+
+.menu-item-danger:hover svg {
+    color: #c0392b;
+}
+
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.btn-secondary {
+    background: var(--medium-gray);
+    color: var(--text-primary);
+    text-align: center;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.facility-form h3 {
+    margin-bottom: 1.5rem;
+    color: var(--primary-navy);
+}
+</style>
+
+<script>
+function toggleMenu(button) {
+    const menu = button.nextElementSibling;
+    const isOpen = menu.classList.contains('show');
+    
+    document.querySelectorAll('.menu-dropdown').forEach(m => {
+        m.classList.remove('show');
+    });
+    
+    if (!isOpen) {
+        menu.classList.add('show');
+    }
+}
+
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.menu-container')) {
+        document.querySelectorAll('.menu-dropdown').forEach(menu => {
+            menu.classList.remove('show');
+        });
+    }
+});
+</script>
+
+{% endblock %}

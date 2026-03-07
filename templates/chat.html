@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="chat-container">
+    <div class="page-header">
+        <h1>Chat with Dorm Manager</h1>
+        <p>Get help and support from dormitory management</p>
+    </div>
+
+    <div class="chat-wrapper">
+        <div class="chat-messages">
+            {% if messages %}
+                {% for msg in messages %}
+                <div class="message message-student">
+                    <div class="message-content">
+                        <p>{{ msg.message }}</p>
+                        <span class="message-time">{{ msg.timestamp.split(' ')[1][:5] if msg.timestamp else '' }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="no-messages">
+                <p>No messages yet. Start a conversation!</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <form method="POST" class="chat-form">
+            <div class="input-group">
+                <input type="text" name="message" placeholder="Type your message..." required>
+                <button type="submit" class="btn">Send</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.chat-container {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.chat-wrapper {
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 600px;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    background: var(--light-gray);
+}
+
+.message {
+    margin-bottom: 1rem;
+    display: flex;
+    animation: messageSlideIn 0.3s ease-out;
+}
+
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-student {
+    justify-content: flex-end;
+}
+
+.message-content {
+    background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 100%);
+    color: var(--white);
+    padding: 0.75rem 1.25rem;
+    border-radius: 18px;
+    max-width: 70%;
+    box-shadow: var(--shadow-md);
+    position: relative;
+}
+
+.message-content p {
+    margin: 0;
+    color: var(--white);
+    word-wrap: break-word;
+    line-height: 1.5;
+}
+
+.message-time {
+    display: block;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 0.25rem;
+    text-align: right;
+}
+
+.no-messages {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+
+.chat-form {
+    padding: 1.5rem;
+    border-top: 2px solid var(--medium-gray);
+}
+
+.input-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.input-group input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 1rem;
+    height: 44px;
+}
+
+.input-group .btn {
+    padding: 0.75rem 1.5rem;
+    height: 44px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatMessages = document.querySelector('.chat-messages');
+    if (chatMessages) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    const chatForm = document.querySelector('.chat-form');
+    if (chatForm) {
+        chatForm.addEventListener('submit', function() {
+            setTimeout(function() {
+                if (chatMessages) {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            }, 100);
+        });
+    }
+});
+</script>
+
+{% endblock %}
