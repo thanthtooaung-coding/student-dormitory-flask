@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="admin-container">
+    <div class="page-header">
+        <h1>Chat with Students</h1>
+        <p>Respond to student messages</p>
+    </div>
+
+    <div class="chat-layout">
+        <div class="chat-rooms-sidebar">
+            <h3>Chat Rooms</h3>
+            {% if chat_rooms %}
+            <div class="rooms-list">
+                {% for room in chat_rooms %}
+                <a href="/admin/chat/{{ room.student_id }}" class="room-item {% if current_student and current_student.id == room.student_id %}active{% endif %}">
+                    <div class="room-avatar">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <div class="room-info">
+                        <div class="room-name">{{ room.name }}</div>
+                        <div class="room-id">{{ room.student_id_text }}</div>
+                        {% if room.last_message %}
+                        <div class="room-preview">{{ room.last_message[:50] }}{% if room.last_message|length > 50 %}...{% endif %}</div>
+                        {% endif %}
+                    </div>
+                    {% if room.last_timestamp %}
+                    <div class="room-time">{{ room.last_timestamp.split(' ')[1][:5] if room.last_timestamp else '' }}</div>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-rooms">
+                <p>No chat rooms yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="chat-conversation">
+            {% if current_student and messages %}
+            <div class="conversation-header">
+                <div class="conversation-student">
+                    <div class="student-avatar">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3>{{ current_student.name }}</h3>
+                        <p class="student-email">{{ current_student.email }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="messages-container" id="messagesContainer">
+                {% for msg in messages %}
+                <div class="message {% if msg.sender == 'student' %}message-student{% else %}message-manager{% endif %}">
+                    <div class="message-content">
+                        <p>{{ msg.message }}</p>
+                        <span class="message-time">{{ msg.timestamp.split(' ')[1][:5] if msg.timestamp else '' }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <form method="POST" class="chat-form-admin">
+                <div class="input-group">
+                    <input type="text" name="message" placeholder="Type your response..." required autofocus>
+                    <button type="submit" class="btn">Send</button>
+                </div>
+            </form>
+            {% elif current_student %}
+            <div class="no-messages">
+                <p>No messages yet. Start the conversation!</p>
+            </div>
+            {% else %}
+            <div class="select-room">
+                <div class="select-room-content">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" style="color: var(--text-secondary); margin-bottom: 1rem;">
+                        <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <h3>Select a chat room</h3>
+                    <p>Choose a student from the list to view and respond to messages</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-container {
+    max-width: 1400px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.chat-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 2rem;
+    height: calc(100vh - 250px);
+    min-height: 600px;
+}
+
+.chat-rooms-sidebar {
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    padding: 1.5rem;
+    overflow-y: auto;
+    border: 2px solid var(--medium-gray);
+}
+
+.chat-rooms-sidebar h3 {
+    color: var(--primary-navy);
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--light-gray);
+}
+
+.rooms-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.room-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.room-item:hover {
+    background: var(--light-gray);
+    border-color: var(--medium-gray);
+}
+
+.room-item.active {
+    background: linear-gradient(135deg, rgba(244, 162, 97, 0.1) 0%, rgba(244, 162, 97, 0.2) 100%);
+    border-color: var(--accent-gold);
+}
+
+.room-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-navy) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    flex-shrink: 0;
+}
+
+.room-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.room-name {
+    font-weight: 600;
+    color: var(--primary-dark);
+    margin-bottom: 0.25rem;
+}
+
+.room-id {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.room-preview {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.room-time {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.chat-conversation {
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    border: 2px solid var(--medium-gray);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.conversation-header {
+    padding: 1.5rem;
+    border-bottom: 2px solid var(--light-gray);
+    background: var(--light-gray);
+}
+
+.conversation-student {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.student-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-navy) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    flex-shrink: 0;
+}
+
+.conversation-student h3 {
+    color: var(--primary-dark);
+    margin: 0 0 0.25rem 0;
+    font-size: 1.2rem;
+}
+
+.student-email {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    background: var(--light-gray);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.message {
+    display: flex;
+    animation: messageSlideIn 0.3s ease-out;
+}
+
+.message-student {
+    justify-content: flex-start;
+}
+
+.message-manager {
+    justify-content: flex-end;
+}
+
+.message-content {
+    padding: 0.75rem 1.25rem;
+    border-radius: 18px;
+    max-width: 70%;
+    box-shadow: var(--shadow-sm);
+}
+
+.message-student .message-content {
+    background: var(--white);
+    color: var(--text-primary);
+}
+
+.message-manager .message-content {
+    background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 100%);
+    color: var(--white);
+}
+
+.message-content p {
+    margin: 0;
+    word-wrap: break-word;
+    line-height: 1.5;
+}
+
+.message-time {
+    display: block;
+    font-size: 0.7rem;
+    margin-top: 0.25rem;
+    opacity: 0.7;
+}
+
+.message-student .message-time {
+    text-align: left;
+}
+
+.message-manager .message-time {
+    text-align: right;
+}
+
+.chat-form-admin {
+    padding: 1.5rem;
+    border-top: 2px solid var(--light-gray);
+    background: var(--white);
+}
+
+.input-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.input-group input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 1rem;
+    height: 44px;
+}
+
+.input-group .btn {
+    padding: 0.75rem 1.5rem;
+    height: 44px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.select-room {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 3rem;
+}
+
+.select-room-content {
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.select-room-content h3 {
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+.no-messages {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+}
+
+.no-rooms {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 968px) {
+    .chat-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    
+    .chat-rooms-sidebar {
+        max-height: 300px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('messagesContainer');
+    if (container) {
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    const chatForm = document.querySelector('.chat-form-admin');
+    if (chatForm) {
+        chatForm.addEventListener('submit', function() {
+            setTimeout(function() {
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                }
+            }, 100);
+        });
+    }
+});
+</script>
+
+{% endblock %}

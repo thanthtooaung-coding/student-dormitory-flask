@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>Super Admin Dashboard</h1>
+        <p class="dashboard-subtitle">System overview and management</p>
+    </div>
+
+    <div class="dashboard-stats">
+        <div class="stat-card stat-card-primary">
+            <div class="stat-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="currentColor" stroke-width="2"/>
+                    <path d="M20.59 22C20.59 18.13 16.74 15 12 15C7.26 15 3.41 18.13 3.41 22" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_students or 0 }}</div>
+                <div class="stat-label">Total Students</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-secondary">
+            <div class="stat-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="currentColor" stroke-width="2"/>
+                    <path d="M20.59 22C20.59 18.13 16.74 15 12 15C7.26 15 3.41 18.13 3.41 22" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_managers or 0 }}</div>
+                <div class="stat-label">Dorm Managers</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-tertiary">
+            <div class="stat-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_hostels or 0 }}</div>
+                <div class="stat-label">Hostels</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-quaternary">
+            <div class="stat-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                    <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_bookings or 0 }}</div>
+                <div class="stat-label">Confirmed Bookings</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-primary">
+            <div class="stat-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ pending_payments or 0 }}</div>
+                <div class="stat-label">Pending Payments</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-secondary">
+            <div class="stat-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 17C11.45 17 11 16.55 11 16V12C11 11.45 11.45 11 12 11C12.55 11 13 11.45 13 12V16C13 16.55 12.55 17 12 17ZM13 9H11V7H13V9Z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">฿{{ "{:,.2f}".format(total_revenue) }}</div>
+                <div class="stat-label">Total Revenue</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-actions">
+        <a href="/super-admin/users" class="action-card">
+            <div class="action-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="currentColor" stroke-width="2"/>
+                    <path d="M20.59 22C20.59 18.13 16.74 15 12 15C7.26 15 3.41 18.13 3.41 22" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <h3>Manage Users</h3>
+            <p>Manage students and managers</p>
+        </a>
+        <a href="/super-admin/hostels" class="action-card">
+            <div class="action-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <h3>Manage Hostels</h3>
+            <p>Add, edit, and delete hostels</p>
+        </a>
+        <a href="/super-admin/system" class="action-card">
+            <div class="action-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 17C11.45 17 11 16.55 11 16V12C11 11.45 11.45 11 12 11C12.55 11 13 11.45 13 12V16C13 16.55 12.55 17 12 17ZM13 9H11V7H13V9Z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <h3>Manage System</h3>
+            <p>System information and settings</p>
+        </a>
+        <a href="/super-admin/payments" class="action-card">
+            <div class="action-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 4H4C2.89 4 2.01 4.89 2.01 6L2 18C2 19.11 2.89 20 4 20H20C21.11 20 22 19.11 22 18V6C22 4.89 21.11 4 20 4ZM20 18H4V8H20V18Z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <h3>Process Payments</h3>
+            <p>View and manage all payments</p>
+        </a>
+    </div>
+</div>
+
+<style>
+.dashboard-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.action-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.action-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+    background: linear-gradient(135deg, var(--white) 0%, #f8f9fa 100%);
+}
+
+.action-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    margin-bottom: 1rem;
+}
+
+.action-card h3 {
+    margin: 0.5rem 0;
+    color: var(--primary-blue);
+    font-size: 1.2rem;
+}
+
+.action-card p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+</style>
+
+{% endblock %}

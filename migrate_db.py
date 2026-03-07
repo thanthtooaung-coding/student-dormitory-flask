@@ -26,6 +26,8 @@ def get_table_schema():
                 ('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
                 ('manager_id', 'TEXT UNIQUE NOT NULL'),
                 ('name', 'TEXT NOT NULL'),
+                ('email', 'TEXT UNIQUE'),
+                ('password', 'TEXT'),
                 ('phone_number', 'TEXT'),
                 ('line_id', 'TEXT')
             ]
@@ -111,6 +113,26 @@ def get_table_schema():
                 ('visitor_name', 'TEXT NOT NULL'),
                 ('visit_date', 'TEXT NOT NULL'),
                 ('visit_time', 'TEXT NOT NULL')
+            ]
+        },
+        'chat_messages': {
+            'columns': [
+                ('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+                ('student_id', 'INTEGER NOT NULL'),
+                ('message', 'TEXT NOT NULL'),
+                ('sender', 'TEXT DEFAULT \'student\''),
+                ('timestamp', 'TEXT DEFAULT CURRENT_TIMESTAMP')
+            ]
+        },
+        'admins': {
+            'columns': [
+                ('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+                ('admin_id', 'TEXT UNIQUE NOT NULL'),
+                ('name', 'TEXT NOT NULL'),
+                ('email', 'TEXT UNIQUE NOT NULL'),
+                ('password', 'TEXT NOT NULL'),
+                ('phone_number', 'TEXT'),
+                ('created_at', 'TEXT DEFAULT CURRENT_TIMESTAMP')
             ]
         }
     }

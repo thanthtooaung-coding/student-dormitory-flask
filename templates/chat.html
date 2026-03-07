@@ -11,7 +11,7 @@
         <div class="chat-messages">
             {% if messages %}
                 {% for msg in messages %}
-                <div class="message message-student">
+                <div class="message {% if msg.sender == 'student' %}message-student{% else %}message-manager{% endif %}">
                     <div class="message-content">
                         <p>{{ msg.message }}</p>
                         <span class="message-time">{{ msg.timestamp.split(' ')[1][:5] if msg.timestamp else '' }}</span>
@@ -79,9 +79,11 @@
     justify-content: flex-end;
 }
 
+.message-manager {
+    justify-content: flex-start;
+}
+
 .message-content {
-    background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 100%);
-    color: var(--white);
     padding: 0.75rem 1.25rem;
     border-radius: 18px;
     max-width: 70%;
@@ -89,19 +91,46 @@
     position: relative;
 }
 
+.message-student .message-content {
+    background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 100%);
+    color: var(--white);
+}
+
+.message-manager .message-content {
+    background: var(--white);
+    color: var(--text-primary);
+    border: 1px solid var(--medium-gray);
+}
+
 .message-content p {
     margin: 0;
-    color: var(--white);
     word-wrap: break-word;
     line-height: 1.5;
+}
+
+.message-student .message-content p {
+    color: var(--white);
+}
+
+.message-manager .message-content p {
+    color: var(--text-primary);
 }
 
 .message-time {
     display: block;
     font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.8);
     margin-top: 0.25rem;
+    opacity: 0.7;
+}
+
+.message-student .message-time {
+    color: rgba(255, 255, 255, 0.8);
     text-align: right;
+}
+
+.message-manager .message-time {
+    color: var(--text-secondary);
+    text-align: left;
 }
 
 .no-messages {

@@ -216,3 +216,50 @@ class Visitor:
     def register_visitor(self):
         """Register a visitor"""
         return True
+
+
+class Admin:
+    """Admin model representing a system administrator"""
+    
+    def __init__(self, admin_id, name, email, password, phone_number=None, created_at=None):
+        self.admin_id = admin_id
+        self.name = name
+        self.email = email
+        self.password = password
+        self.phone_number = phone_number
+        self.created_at = created_at
+    
+    def manage_users(self):
+        """Manage system users (students and managers)"""
+        return True
+    
+    def manage_hostels(self):
+        """Manage hostels and rooms"""
+        return True
+    
+    def manage_system(self):
+        """Manage system settings and configurations"""
+        return True
+    
+    def process_payments(self):
+        """Process and manage payment transactions"""
+        return True
+
+
+class ChatMessage:
+    """Chat Message model representing messages between students and managers"""
+    
+    def __init__(self, message_id, student_id, message, sender="student", timestamp=None):
+        self.message_id = message_id
+        self.student_id = student_id
+        self.message = message
+        self.sender = sender
+        self.timestamp = timestamp
+    
+    def send_message(self):
+        """Send a chat message"""
+        return True
+    
+    def get_conversation(self):
+        """Get conversation history"""
+        return []

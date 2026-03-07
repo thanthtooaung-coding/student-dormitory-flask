@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="admin-container">
+    <div class="page-header">
+        <h1>Repair Requests</h1>
+        <p>View and update repair request status</p>
+    </div>
+
+    {% if repairs %}
+    <div class="repairs-list">
+        {% for repair in repairs %}
+        <div class="repair-card">
+            <div class="repair-header">
+                <div class="repair-info">
+                    <h3>{{ repair.issue_type }}</h3>
+                    <p class="student-info">{{ repair.student_name }} ({{ repair.student_id }})</p>
+                    <p class="student-email">{{ repair.student_email }}</p>
+                </div>
+                <form method="POST" action="/admin/repair/{{ repair.id }}/update" class="status-form">
+                    <select name="status" class="status-select" onchange="this.form.submit()">
+                        <option value="pending" {% if repair.status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="in_progress" {% if repair.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if repair.status == 'completed' %}selected{% endif %}>Completed</option>
+                    </select>
+                </form>
+            </div>
+            
+            <div class="repair-description">
+                <p>{{ repair.description }}</p>
+            </div>
+            
+            <div class="repair-footer">
+                <span class="repair-date">Reported: {{ repair.report_date }}</span>
+                <span class="status-badge status-{{ repair.status }}">{{ repair.status|replace('_', ' ')|title }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-items">
+        <p>No repair requests found.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.admin-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+.repairs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.repair-card {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    border: 2px solid var(--medium-gray);
+    transition: all 0.3s ease;
+}
+
+.repair-card:hover {
+    box-shadow: var(--shadow-lg);
+    border-color: var(--accent-gold);
+}
+
+.repair-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--light-gray);
+}
+
+.repair-info h3 {
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+    font-size: 1.3rem;
+}
+
+.student-info {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0.25rem 0;
+}
+
+.student-email {
+    color: var(--primary-blue);
+    font-size: 0.9rem;
+    margin: 0.25rem 0;
+}
+
+.status-form {
+    flex-shrink: 0;
+}
+
+.status-select {
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--white);
+}
+
+.status-select:hover {
+    border-color: var(--accent-gold);
+}
+
+.status-select:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+    box-shadow: var(--shadow-gold);
+}
+
+.repair-description {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--light-gray);
+    border-radius: 8px;
+}
+
+.repair-description p {
+    margin: 0;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.repair-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 2px solid var(--light-gray);
+}
+
+.repair-date {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.status-pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #f57c00;
+}
+
+.status-in_progress {
+    background: rgba(33, 150, 243, 0.2);
+    color: #1976d2;
+}
+
+.status-completed {
+    background: rgba(76, 175, 80, 0.2);
+    color: #388e3c;
+}
+
+.no-items {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    color: var(--text-secondary);
+}
+</style>
+
+{% endblock %}

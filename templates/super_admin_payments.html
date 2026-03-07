@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="admin-container">
+    <div class="admin-header">
+        <h1>Process Payments</h1>
+        <div class="payment-summary">
+            <div class="summary-card">
+                <span class="summary-label">Total Revenue:</span>
+                <span class="summary-value revenue">฿{{ "{:,.2f}".format(total_revenue) }}</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">Pending Amount:</span>
+                <span class="summary-value pending">฿{{ "{:,.2f}".format(pending_amount) }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-table-container">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Student</th>
+                    <th>Email</th>
+                    <th>Hostel</th>
+                    <th>Room Type</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if payments %}
+                    {% for payment in payments %}
+                    <tr>
+                        <td>{{ payment.id }}</td>
+                        <td>{{ payment.student_name or '-' }}</td>
+                        <td>{{ payment.student_email or '-' }}</td>
+                        <td>{{ payment.hostel_name or '-' }}</td>
+                        <td>{{ payment.room_type or '-' }}</td>
+                        <td>฿{{ "{:,.2f}".format(payment.amount) }}</td>
+                        <td>{{ payment.payment_method }}</td>
+                        <td>
+                            <span class="status-badge status-{{ payment.payment_status }}">
+                                {{ payment.payment_status.title() }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <form method="POST" action="/super-admin/payment/{{ payment.id }}/update" style="display: inline;">
+                                    <select name="status" onchange="this.form.submit()" class="status-select">
+                                        <option value="pending" {% if payment.payment_status == 'pending' %}selected{% endif %}>Pending</option>
+                                        <option value="completed" {% if payment.payment_status == 'completed' %}selected{% endif %}>Completed</option>
+                                        <option value="failed" {% if payment.payment_status == 'failed' %}selected{% endif %}>Failed</option>
+                                        <option value="refunded" {% if payment.payment_status == 'refunded' %}selected{% endif %}>Refunded</option>
+                                    </select>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center">No payments found</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.payment-summary {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.summary-card {
+    background: var(--white);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.summary-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.summary-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.summary-value.revenue {
+    color: var(--success-green);
+}
+
+.summary-value.pending {
+    color: var(--accent-gold);
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-failed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-refunded {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-select {
+    padding: 0.35rem 0.75rem;
+    border: 2px solid var(--medium-gray);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    background: var(--white);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.status-select:hover {
+    border-color: var(--accent-gold);
+}
+</style>
+
+{% endblock %}

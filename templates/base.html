@@ -18,14 +18,34 @@
     </div>
 
     <div class="nav-links">
-        {% if session.student_id %}
+        {% if session.user_role == 'student' %}
             <a href="/search">Search Hostel</a>
             <a href="/dashboard">Dashboard</a>
             <a href="/myunit">My Unit</a>
             <a href="/bills">Bills</a>
             <a href="/parcels">Parcels</a>
             <div class="user-menu">
-                <span class="user-name">{{ session.student_name }}</span>
+                <span class="user-name">{{ session.user_name }}</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        {% elif session.user_role == 'manager' %}
+            <a href="/admin/dashboard">Admin Dashboard</a>
+            <a href="/admin/applications">Applications</a>
+            <a href="/admin/rooms">Manage Rooms</a>
+            <a href="/admin/repairs">Repairs</a>
+            <a href="/admin/chat">Chat</a>
+            <div class="user-menu">
+                <span class="user-name">{{ session.user_name }}</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+        {% elif session.user_role == 'admin' %}
+            <a href="/super-admin/dashboard">Super Admin</a>
+            <a href="/super-admin/users">Manage Users</a>
+            <a href="/super-admin/hostels">Manage Hostels</a>
+            <a href="/super-admin/system">Manage System</a>
+            <a href="/super-admin/payments">Process Payments</a>
+            <div class="user-menu">
+                <span class="user-name">{{ session.user_name }}</span>
                 <a href="/logout" class="logout-btn">Logout</a>
             </div>
         {% else %}

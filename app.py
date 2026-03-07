@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from db import get_db_connection
 from datetime import datetime, date
+from functools import wraps
 import sqlite3
 
 app = Flask(__name__)
@@ -16,11 +17,38 @@ def date_str_filter(value):
 
 # Helper function to check if user is logged in
 def require_login(f):
+    @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'student_id' not in session:
+        if 'user_id' not in session:
             return redirect(url_for('login'))
         return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
+    return decorated_function
+
+def require_student(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session or session.get('user_role') != 'student':
+            flash("Access denied. Student access required.", "error")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def require_manager(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session or session.get('user_role') != 'manager':
+            flash("Access denied. Manager access required.", "error")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def require_admin(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session or session.get('user_role') != 'admin':
+            flash("Access denied. Admin access required.", "error")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
     return decorated_function
 
 # HOME / LOGIN
@@ -36,18 +64,55 @@ def login():
         
         conn = get_db_connection()
         cursor = conn.cursor()
+        
         cursor.execute(
             "SELECT * FROM students WHERE email = ? AND password = ?",
             (email, password)
         )
         student = cursor.fetchone()
-        conn.close()
         
         if student:
+            session['user_id'] = student['id']
+            session['user_name'] = student['name']
+            session['user_email'] = student['email']
+            session['user_role'] = 'student'
             session['student_id'] = student['id']
             session['student_name'] = student['name']
             session['student_email'] = student['email']
+            conn.close()
             return redirect(url_for('dashboard'))
+        
+        cursor.execute(
+            "SELECT * FROM dorm_managers WHERE email = ? AND password = ?",
+            (email, password)
+        )
+        manager = cursor.fetchone()
+        
+        if manager:
+            session['user_id'] = manager['id']
+            session['user_name'] = manager['name']
+            session['user_email'] = manager['email']
+            session['user_role'] = 'manager'
+            session['manager_id'] = manager['id']
+            session['manager_name'] = manager['name']
+            conn.close()
+            return redirect(url_for('admin_dashboard'))
+        
+        cursor.execute(
+            "SELECT * FROM admins WHERE email = ? AND password = ?",
+            (email, password)
+        )
+        admin = cursor.fetchone()
+        conn.close()
+        
+        if admin:
+            session['user_id'] = admin['id']
+            session['user_name'] = admin['name']
+            session['user_email'] = admin['email']
+            session['user_role'] = 'admin'
+            session['admin_id'] = admin['id']
+            session['admin_name'] = admin['name']
+            return redirect(url_for('super_admin_dashboard'))
         else:
             flash("Invalid email or password", "error")
     
@@ -791,25 +856,10 @@ def suggestion():
 
 # CHAT WITH DORM MANAGER
 @app.route("/chat", methods=["GET", "POST"])
-@require_login
+@require_student
 def chat():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    try:
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS chat_messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                student_id INTEGER NOT NULL,
-                message TEXT NOT NULL,
-                sender TEXT DEFAULT 'student',
-                timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (student_id) REFERENCES students(id)
-            )
-        """)
-        conn.commit()
-    except Exception as e:
-        pass
     
     if request.method == "POST":
         message = request.form.get("message")
@@ -840,6 +890,293 @@ def chat():
 @require_login
 def rules():
     return render_template("rules.html")
+
+# ADMIN DASHBOARD
+@app.route("/admin/dashboard")
+@require_manager
+def admin_dashboard():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM bookings WHERE booking_status = 'pending'")
+    pending_applications = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM bookings WHERE booking_status = 'confirmed'")
+    confirmed_bookings = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM repair_requests WHERE status = 'pending'")
+    pending_repairs = cursor.fetchone()[0]
+    
+    try:
+        cursor.execute("SELECT COUNT(*) FROM chat_messages WHERE sender = 'student'")
+        unread_messages = cursor.fetchone()[0]
+    except:
+        unread_messages = 0
+    
+    conn.close()
+    return render_template("admin_dashboard.html",
+                         pending_applications=pending_applications,
+                         confirmed_bookings=confirmed_bookings,
+                         pending_repairs=pending_repairs,
+                         unread_messages=unread_messages)
+
+# VIEW STUDENT APPLICATIONS
+@app.route("/admin/applications")
+@require_manager
+def view_applications():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT b.*, s.name as student_name, s.email as student_email, s.student_id,
+               r.room_type, r.price, h.name as hostel_name, h.location
+        FROM bookings b
+        JOIN students s ON b.student_id = s.id
+        JOIN rooms r ON b.room_id = r.id
+        JOIN hostels h ON r.hostel_id = h.id
+        WHERE b.booking_status = 'pending'
+        ORDER BY b.id DESC
+    """)
+    applications = cursor.fetchall()
+    
+    conn.close()
+    return render_template("admin_applications.html", applications=applications)
+
+# APPROVE/REJECT APPLICATION
+@app.route("/admin/application/<int:booking_id>/<action>", methods=["POST"])
+@require_manager
+def manage_application(booking_id, action):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    if action == "approve":
+        try:
+            cursor.execute(
+                "UPDATE bookings SET booking_status = 'confirmed' WHERE id = ?",
+                (booking_id,)
+            )
+            conn.commit()
+            flash("Application approved successfully", "success")
+        except Exception as e:
+            conn.rollback()
+            flash("Error approving application. Please try again.", "error")
+    elif action == "reject":
+        try:
+            cursor.execute(
+                "UPDATE bookings SET booking_status = 'rejected' WHERE id = ?",
+                (booking_id,)
+            )
+            cursor.execute(
+                "UPDATE rooms SET available = 1 WHERE id = (SELECT room_id FROM bookings WHERE id = ?)",
+                (booking_id,)
+            )
+            conn.commit()
+            flash("Application rejected successfully", "success")
+        except Exception as e:
+            conn.rollback()
+            flash("Error rejecting application. Please try again.", "error")
+    
+    conn.close()
+    return redirect(url_for('view_applications'))
+
+# MANAGE ROOMS
+@app.route("/admin/rooms")
+@require_manager
+def manage_rooms():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT r.*, h.name as hostel_name, h.location
+        FROM rooms r
+        JOIN hostels h ON r.hostel_id = h.id
+        ORDER BY h.name, r.room_type
+    """)
+    rooms = cursor.fetchall()
+    
+    cursor.execute("SELECT * FROM hostels ORDER BY name")
+    hostels = cursor.fetchall()
+    
+    conn.close()
+    return render_template("admin_rooms.html", rooms=rooms, hostels=hostels)
+
+# ADD/EDIT ROOM
+@app.route("/admin/room", methods=["POST"])
+@app.route("/admin/room/<int:room_id>", methods=["POST"])
+@require_manager
+def save_room(room_id=None):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    hostel_id = request.form.get("hostel_id")
+    room_type = request.form.get("room_type")
+    price = request.form.get("price")
+    facilities = request.form.get("facilities", "")
+    available = request.form.get("available", "1")
+    
+    if not all([hostel_id, room_type, price]):
+        flash("Please fill in all required fields", "error")
+        conn.close()
+        return redirect(url_for('manage_rooms'))
+    
+    try:
+        if room_id:
+            cursor.execute(
+                "UPDATE rooms SET hostel_id = ?, room_type = ?, price = ?, facilities = ?, available = ? WHERE id = ?",
+                (hostel_id, room_type, float(price), facilities, int(available), room_id)
+            )
+            flash("Room updated successfully", "success")
+        else:
+            cursor.execute(
+                "INSERT INTO rooms (hostel_id, room_type, price, facilities, available) VALUES (?, ?, ?, ?, ?)",
+                (hostel_id, room_type, float(price), facilities, int(available))
+            )
+            flash("Room added successfully", "success")
+        
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        flash("Error saving room. Please try again.", "error")
+    finally:
+        conn.close()
+    
+    return redirect(url_for('manage_rooms'))
+
+# DELETE ROOM
+@app.route("/admin/room/<int:room_id>/delete", methods=["POST"])
+@require_manager
+def delete_room(room_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("DELETE FROM rooms WHERE id = ?", (room_id,))
+        conn.commit()
+        flash("Room deleted successfully", "success")
+    except Exception as e:
+        conn.rollback()
+        flash("Error deleting room. Please try again.", "error")
+    finally:
+        conn.close()
+    
+    return redirect(url_for('manage_rooms'))
+
+# VIEW REPAIR REQUESTS
+@app.route("/admin/repairs")
+@require_manager
+def view_repairs():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT r.*, s.name as student_name, s.student_id, s.email as student_email
+        FROM repair_requests r
+        JOIN students s ON r.student_id = s.id
+        ORDER BY r.report_date DESC, r.status
+    """)
+    repairs = cursor.fetchall()
+    
+    conn.close()
+    return render_template("admin_repairs.html", repairs=repairs)
+
+# UPDATE REPAIR STATUS
+@app.route("/admin/repair/<int:repair_id>/update", methods=["POST"])
+@require_manager
+def update_repair(repair_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    status = request.form.get("status")
+    
+    if status not in ['pending', 'in_progress', 'completed']:
+        flash("Invalid status", "error")
+        conn.close()
+        return redirect(url_for('view_repairs'))
+    
+    try:
+        cursor.execute(
+            "UPDATE repair_requests SET status = ? WHERE id = ?",
+            (status, repair_id)
+        )
+        conn.commit()
+        flash("Repair request updated successfully", "success")
+    except Exception as e:
+        conn.rollback()
+        flash("Error updating repair request. Please try again.", "error")
+    finally:
+        conn.close()
+    
+    return redirect(url_for('view_repairs'))
+
+# MANAGER CHAT - LIST CHAT ROOMS
+@app.route("/admin/chat")
+@require_manager
+def manager_chat():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT DISTINCT cm.student_id, s.name, s.student_id as student_id_text, s.email,
+               (SELECT message FROM chat_messages WHERE student_id = cm.student_id ORDER BY timestamp DESC LIMIT 1) as last_message,
+               (SELECT timestamp FROM chat_messages WHERE student_id = cm.student_id ORDER BY timestamp DESC LIMIT 1) as last_timestamp
+        FROM chat_messages cm
+        JOIN students s ON cm.student_id = s.id
+        ORDER BY last_timestamp DESC
+    """)
+    chat_rooms = cursor.fetchall()
+    
+    conn.close()
+    return render_template("admin_chat.html", chat_rooms=chat_rooms)
+
+# MANAGER CHAT - VIEW CONVERSATION
+@app.route("/admin/chat/<int:student_id>", methods=["GET", "POST"])
+@require_manager
+def manager_chat_conversation(student_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    if request.method == "POST":
+        message = request.form.get("message")
+        
+        if message:
+            try:
+                cursor.execute(
+                    "INSERT INTO chat_messages (student_id, message, sender, timestamp) VALUES (?, ?, ?, ?)",
+                    (student_id, message, 'manager', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                )
+                conn.commit()
+                flash("Message sent successfully", "success")
+            except Exception as e:
+                conn.rollback()
+                flash("Error sending message. Please try again.", "error")
+    
+    cursor.execute("SELECT * FROM students WHERE id = ?", (student_id,))
+    student = cursor.fetchone()
+    
+    if not student:
+        flash("Student not found", "error")
+        conn.close()
+        return redirect(url_for('manager_chat'))
+    
+    cursor.execute("""
+        SELECT * FROM chat_messages 
+        WHERE student_id = ? 
+        ORDER BY timestamp ASC
+    """, (student_id,))
+    messages = cursor.fetchall()
+    
+    cursor.execute("""
+        SELECT DISTINCT cm.student_id, s.name, s.student_id as student_id_text, s.email,
+               (SELECT message FROM chat_messages WHERE student_id = cm.student_id ORDER BY timestamp DESC LIMIT 1) as last_message,
+               (SELECT timestamp FROM chat_messages WHERE student_id = cm.student_id ORDER BY timestamp DESC LIMIT 1) as last_timestamp
+        FROM chat_messages cm
+        JOIN students s ON cm.student_id = s.id
+        ORDER BY last_timestamp DESC
+    """)
+    chat_rooms = cursor.fetchall()
+    
+    conn.close()
+    return render_template("admin_chat.html", chat_rooms=chat_rooms, current_student=student, messages=messages)
 
 # CHECK DUPLICATE STUDENT ID (AJAX endpoint)
 @app.route("/check-student-id")
@@ -880,6 +1217,383 @@ def hostels():
     hostels = cursor.fetchall()
     conn.close()
     return render_template("hostels.html", hostels=hostels)
+
+# ==================== ADMIN ROUTES ====================
+
+# SUPER ADMIN DASHBOARD
+@app.route("/super-admin/dashboard")
+@require_admin
+def super_admin_dashboard():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM students")
+    total_students = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM dorm_managers")
+    total_managers = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM hostels")
+    total_hostels = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM bookings WHERE booking_status = 'confirmed'")
+    total_bookings = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM payments WHERE payment_status = 'pending'")
+    pending_payments = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT SUM(amount) FROM payments WHERE payment_status = 'completed'")
+    total_revenue = cursor.fetchone()[0] or 0
+    
+    conn.close()
+    return render_template("super_admin_dashboard.html",
+                         total_students=total_students,
+                         total_managers=total_managers,
+                         total_hostels=total_hostels,
+                         total_bookings=total_bookings,
+                         pending_payments=pending_payments,
+                         total_revenue=total_revenue)
+
+# MANAGE USERS - VIEW ALL
+@app.route("/super-admin/users")
+@require_admin
+def manage_users():
+    user_type = request.args.get('type', 'students')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    if user_type == 'students':
+        cursor.execute("SELECT * FROM students ORDER BY id DESC")
+        users = cursor.fetchall()
+        user_type_name = 'Students'
+    else:
+        cursor.execute("SELECT * FROM dorm_managers ORDER BY id DESC")
+        users = cursor.fetchall()
+        user_type_name = 'Managers'
+    
+    conn.close()
+    
+    users_list = [dict(user) for user in users]
+    
+    return render_template("super_admin_users.html", users=users, users_json=users_list, user_type=user_type, user_type_name=user_type_name)
+
+# MANAGE USERS - ADD/EDIT
+@app.route("/super-admin/user", methods=["POST"])
+@app.route("/super-admin/user/<int:user_id>", methods=["POST"])
+@require_admin
+def save_user(user_id=None):
+    user_type = request.form.get("user_type")
+    name = request.form.get("name")
+    email = request.form.get("email")
+    password = request.form.get("password")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        if not user_type or not name or not email:
+            flash("Missing required fields", "error")
+            conn.close()
+            return redirect(url_for('manage_users', type=user_type or 'students'))
+        
+        if user_type == 'student' or user_type == 'students':
+            student_id = request.form.get("student_id")
+            faculty = request.form.get("faculty")
+            major = request.form.get("major")
+            
+            if not student_id and not user_id:
+                flash("Student ID is required", "error")
+                conn.close()
+                return redirect(url_for('manage_users', type='students'))
+            
+            if not password and not user_id:
+                flash("Password is required for new students", "error")
+                conn.close()
+                return redirect(url_for('manage_users', type='students'))
+            
+            if user_id:
+                if password:
+                    cursor.execute(
+                        "UPDATE students SET name = ?, email = ?, password = ?, faculty = ?, major = ? WHERE id = ?",
+                        (name, email, password, faculty, major, user_id)
+                    )
+                else:
+                    cursor.execute(
+                        "UPDATE students SET name = ?, email = ?, faculty = ?, major = ? WHERE id = ?",
+                        (name, email, faculty, major, user_id)
+                    )
+                flash("Student updated successfully", "success")
+            else:
+                cursor.execute(
+                    "INSERT INTO students (student_id, name, email, password, faculty, major) VALUES (?, ?, ?, ?, ?, ?)",
+                    (student_id, name, email, password, faculty, major)
+                )
+                flash("Student added successfully", "success")
+        elif user_type == 'manager' or user_type == 'managers':
+            manager_id = request.form.get("manager_id")
+            phone_number = request.form.get("phone_number")
+            line_id = request.form.get("line_id")
+            
+            if not manager_id and not user_id:
+                flash("Manager ID is required", "error")
+                conn.close()
+                return redirect(url_for('manage_users', type='managers'))
+            
+            if not password and not user_id:
+                flash("Password is required for new managers", "error")
+                conn.close()
+                return redirect(url_for('manage_users', type='managers'))
+            
+            if user_id:
+                if password:
+                    cursor.execute(
+                        "UPDATE dorm_managers SET name = ?, email = ?, password = ?, phone_number = ?, line_id = ? WHERE id = ?",
+                        (name, email, password, phone_number, line_id, user_id)
+                    )
+                else:
+                    cursor.execute(
+                        "UPDATE dorm_managers SET name = ?, email = ?, phone_number = ?, line_id = ? WHERE id = ?",
+                        (name, email, phone_number, line_id, user_id)
+                    )
+                flash("Manager updated successfully", "success")
+            else:
+                cursor.execute(
+                    "INSERT INTO dorm_managers (manager_id, name, email, password, phone_number, line_id) VALUES (?, ?, ?, ?, ?, ?)",
+                    (manager_id, name, email, password, phone_number, line_id)
+                )
+                flash("Manager added successfully", "success")
+        else:
+            flash("Invalid user type", "error")
+            conn.close()
+            return redirect(url_for('manage_users', type='students'))
+        
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error saving user: {str(e)}", "error")
+    finally:
+        conn.close()
+    
+    redirect_type = 'students' if (user_type == 'student' or user_type == 'students') else 'managers'
+    return redirect(url_for('manage_users', type=redirect_type))
+
+# MANAGE USERS - DELETE
+@app.route("/super-admin/user/<int:user_id>/delete", methods=["POST"])
+@require_admin
+def delete_user(user_id):
+    user_type = request.form.get("user_type")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        if user_type == 'student':
+            cursor.execute("DELETE FROM students WHERE id = ?", (user_id,))
+            flash("Student deleted successfully", "success")
+        else:
+            cursor.execute("DELETE FROM dorm_managers WHERE id = ?", (user_id,))
+            flash("Manager deleted successfully", "success")
+        
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error deleting user: {str(e)}", "error")
+    finally:
+        conn.close()
+    
+    return redirect(url_for('manage_users', type=user_type))
+
+# MANAGE HOSTELS - VIEW ALL
+@app.route("/super-admin/hostels")
+@require_admin
+def manage_hostels():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM hostels ORDER BY name")
+    hostels = cursor.fetchall()
+    
+    conn.close()
+    
+    hostels_list = [dict(hostel) for hostel in hostels]
+    
+    return render_template("super_admin_hostels.html", hostels=hostels, hostels_json=hostels_list)
+
+# MANAGE HOSTELS - ADD/EDIT
+@app.route("/super-admin/hostel", methods=["POST"])
+@app.route("/super-admin/hostel/<int:hostel_id>", methods=["POST"])
+@require_admin
+def save_hostel(hostel_id=None):
+    name = request.form.get("name")
+    location = request.form.get("location")
+    distance_from_campus = request.form.get("distance_from_campus")
+    rating = request.form.get("rating")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        if hostel_id:
+            cursor.execute(
+                "UPDATE hostels SET name = ?, location = ?, distance_from_campus = ?, rating = ? WHERE id = ?",
+                (name, location, float(distance_from_campus) if distance_from_campus else None, 
+                 float(rating) if rating else None, hostel_id)
+            )
+            flash("Hostel updated successfully", "success")
+        else:
+            cursor.execute(
+                "INSERT INTO hostels (name, location, distance_from_campus, rating) VALUES (?, ?, ?, ?)",
+                (name, location, float(distance_from_campus) if distance_from_campus else None,
+                 float(rating) if rating else None)
+            )
+            flash("Hostel added successfully", "success")
+        
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error saving hostel: {str(e)}", "error")
+    finally:
+        conn.close()
+    
+    return redirect(url_for('manage_hostels'))
+
+# MANAGE HOSTELS - DELETE
+@app.route("/super-admin/hostel/<int:hostel_id>/delete", methods=["POST"])
+@require_admin
+def delete_hostel(hostel_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("DELETE FROM hostels WHERE id = ?", (hostel_id,))
+        conn.commit()
+        flash("Hostel deleted successfully", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error deleting hostel: {str(e)}", "error")
+    finally:
+        conn.close()
+    
+    return redirect(url_for('manage_hostels'))
+
+# MANAGE SYSTEM
+@app.route("/super-admin/system")
+@require_admin
+def manage_system():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM students")
+    total_students = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM dorm_managers")
+    total_managers = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM admins")
+    total_admins = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM hostels")
+    total_hostels = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM rooms")
+    total_rooms = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM bookings")
+    total_bookings = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM payments")
+    total_payments = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM bills")
+    total_bills = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM parcels")
+    total_parcels = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM facility_bookings")
+    total_facility_bookings = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM repair_requests")
+    total_repair_requests = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM visitors")
+    total_visitors = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM chat_messages")
+    total_chat_messages = cursor.fetchone()[0]
+    
+    conn.close()
+    return render_template("super_admin_system.html",
+                         total_students=total_students,
+                         total_managers=total_managers,
+                         total_admins=total_admins,
+                         total_hostels=total_hostels,
+                         total_rooms=total_rooms,
+                         total_bookings=total_bookings,
+                         total_payments=total_payments,
+                         total_bills=total_bills,
+                         total_parcels=total_parcels,
+                         total_facility_bookings=total_facility_bookings,
+                         total_repair_requests=total_repair_requests,
+                         total_visitors=total_visitors,
+                         total_chat_messages=total_chat_messages)
+
+# PROCESS PAYMENT - VIEW ALL
+@app.route("/super-admin/payments")
+@require_admin
+def process_payments():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT p.*, b.student_id, s.name as student_name, s.email as student_email,
+               r.room_type, h.name as hostel_name, b.checkin_date
+        FROM payments p
+        LEFT JOIN bookings b ON p.booking_id = b.id
+        LEFT JOIN students s ON b.student_id = s.id
+        LEFT JOIN rooms r ON b.room_id = r.id
+        LEFT JOIN hostels h ON r.hostel_id = h.id
+        ORDER BY p.id DESC
+    """)
+    payments = cursor.fetchall()
+    
+    cursor.execute("SELECT SUM(amount) FROM payments WHERE payment_status = 'completed'")
+    total_revenue = cursor.fetchone()[0] or 0
+    
+    cursor.execute("SELECT SUM(amount) FROM payments WHERE payment_status = 'pending'")
+    pending_amount = cursor.fetchone()[0] or 0
+    
+    conn.close()
+    return render_template("super_admin_payments.html", payments=payments, total_revenue=total_revenue, pending_amount=pending_amount)
+
+# PROCESS PAYMENT - UPDATE STATUS
+@app.route("/super-admin/payment/<int:payment_id>/update", methods=["POST"])
+@require_admin
+def update_payment_status(payment_id):
+    status = request.form.get("status")
+    
+    if status not in ['pending', 'completed', 'failed', 'refunded']:
+        flash("Invalid payment status", "error")
+        return redirect(url_for('process_payments'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            "UPDATE payments SET payment_status = ? WHERE id = ?",
+            (status, payment_id)
+        )
+        conn.commit()
+        flash("Payment status updated successfully", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error updating payment status: {str(e)}", "error")
+    finally:
+        conn.close()
+    
+    return redirect(url_for('process_payments'))
 
 if __name__ == "__main__":
     app.run(debug=True)

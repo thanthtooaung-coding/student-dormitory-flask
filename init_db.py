@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS dorm_managers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     manager_id TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    password TEXT,
     phone_number TEXT,
     line_id TEXT
 )
@@ -138,7 +140,69 @@ CREATE TABLE IF NOT EXISTS visitors (
 )
 """)
 
+# Chat Messages table
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL,
+    message TEXT NOT NULL,
+    sender TEXT DEFAULT 'student',
+    timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students(id)
+)
+""")
+
+# Admin table
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS admins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_id TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    phone_number TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
+# Insert sample dorm manager
+try:
+    cursor.execute("""
+        INSERT OR IGNORE INTO dorm_managers (manager_id, name, email, password, phone_number, line_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        'MGR001',
+        'Dorm Manager',
+        'manager@kmitl.ac.th',
+        'manager123',
+        '02-XXX-XXXX',
+        '@dormmanager'
+    ))
+except sqlite3.IntegrityError:
+    pass
+
+# Insert sample admin
+try:
+    cursor.execute("""
+        INSERT OR IGNORE INTO admins (admin_id, name, email, password, phone_number)
+        VALUES (?, ?, ?, ?, ?)
+    """, (
+        'ADMIN001',
+        'System Admin',
+        'admin@kmitl.ac.th',
+        'admin123',
+        '02-XXX-XXXX'
+    ))
+except sqlite3.IntegrityError:
+    pass
+
 connection.commit()
 connection.close()
 
 print("Database created successfully!")
+print("Manager login credentials:")
+print("Email: manager@kmitl.ac.th")
+print("Password: manager123")
+print("\nAdmin login credentials:")
+print("Email: admin@kmitl.ac.th")
+print("Password: admin123")
