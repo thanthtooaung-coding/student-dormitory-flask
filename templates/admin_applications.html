@@ -17,7 +17,9 @@
                     <p class="student-id">Student ID: {{ app.student_id }}</p>
                     <p class="student-email">{{ app.student_email }}</p>
                 </div>
-                <span class="status-badge status-pending">Pending</span>
+                <span class="status-badge status-{{ app.booking_status }}">
+                    {{ app.booking_status|replace('_', ' ')|title }}
+                </span>
             </div>
             
             <div class="application-details">
@@ -44,12 +46,26 @@
             </div>
             
             <div class="application-actions">
+                {% if app.booking_status == 'pending' %}
                 <form method="POST" action="/admin/application/{{ app.id }}/approve" style="display: inline;">
                     <button type="submit" class="btn btn-approve">Approve</button>
                 </form>
                 <form method="POST" action="/admin/application/{{ app.id }}/reject" style="display: inline;" onsubmit="return confirm('Are you sure you want to reject this application?');">
                     <button type="submit" class="btn btn-reject">Reject</button>
                 </form>
+                {% else %}
+                <p class="no-actions">
+                    {% if app.booking_status == 'awaiting_payment' %}
+                        Waiting for student payment.
+                    {% elif app.booking_status == 'confirmed' %}
+                        Booking already approved.
+                    {% elif app.booking_status == 'rejected' %}
+                        Booking was rejected.
+                    {% else %}
+                        No actions available for this status.
+                    {% endif %}
+                </p>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -139,6 +155,26 @@
 .status-pending {
     background: rgba(255, 193, 7, 0.2);
     color: #f57c00;
+}
+
+.status-awaiting_payment {
+    background: rgba(59, 130, 246, 0.16);
+    color: #1d4ed8;
+}
+
+.status-confirmed {
+    background: rgba(39, 174, 96, 0.16);
+    color: #1b944f;
+}
+
+.status-rejected {
+    background: rgba(231, 76, 60, 0.16);
+    color: #c0392b;
+}
+
+.no-actions {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
 }
 
 .application-details {

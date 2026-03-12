@@ -4,7 +4,7 @@
 <div class="hostel-details-container">
     <div class="hostel-hero">
         <div class="hostel-info">
-            <h1>{{ hostel.name }}</h1>
+            <h1 class="hostel-name">{{ hostel.name }}</h1>
             <div class="hostel-meta">
                 <span class="location-badge">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -61,12 +61,23 @@
     padding: 3rem;
     border-radius: 16px;
     margin-bottom: 3rem;
-    color: white;
+    color: #ffffff;
 }
 
-.hostel-info h1 {
-    color: var(--accent-gold);
+.hostel-info h1.hostel-name {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    font-size: 2.25rem;
+    font-weight: 700;
     margin-bottom: 1rem;
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 0 transparent,
+                 0 1px 2px rgba(0, 0, 0, 0.8),
+                 0 2px 8px rgba(0, 0, 0, 0.6),
+                 0 0 20px rgba(0, 0, 0, 0.4);
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    background-clip: unset !important;
 }
 
 .hostel-meta {
@@ -75,18 +86,27 @@
     flex-wrap: wrap;
 }
 
-.location-badge, .rating-badge, .distance-badge {
-    display: flex;
+.hostel-meta .location-badge,
+.hostel-meta .distance-badge {
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
     padding: 0.5rem 1rem;
     border-radius: 8px;
+    font-weight: 500;
 }
 
-.rating-badge {
+.hostel-meta .rating-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     background: var(--accent-gold);
     color: var(--primary-dark);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
 }
 
 .rooms-section h2 {

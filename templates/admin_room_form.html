@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container room-form-container">
+
+    <h2>{{ 'Edit Room' if room else 'Add New Room' }}</h2>
+
+    <p class="room-form-subtitle">
+        {% if room %}
+        Update room details for <strong>{{ room.hostel_name }}</strong>.
+        {% else %}
+        Create a new room for one of your hostels.
+        {% endif %}
+    </p>
+
+    <a href="/admin/rooms" class="room-back-link">← Back to all rooms</a>
+
+    <form method="POST" action="{{ form_action }}" class="room-form">
+
+        <label for="hostel_id">Hostel <span class="required">*</span></label>
+        <select id="hostel_id" name="hostel_id" required>
+            <option value="">Select a hostel</option>
+            {% for h in hostels %}
+            <option value="{{ h.id }}" {% if room and room.hostel_id == h.id %}selected{% endif %}>
+                {{ h.name }} – {{ h.location }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <br><br>
+
+        <label for="room_type">Room Type <span class="required">*</span></label>
+        <select id="room_type" name="room_type" required>
+            <option value="">Select room type</option>
+            {% set current_type = room.room_type if room else '' %}
+            {% for t in ['Single', 'Double', 'Triple', 'Quad'] %}
+            <option value="{{ t }}" {% if current_type == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+
+        <br><br>
+
+        <label for="price">Price (฿) <span class="required">*</span></label>
+        <input type="number"
+               id="price"
+               name="price"
+               step="0.01"
+               min="0"
+               value="{{ room.price if room else '' }}"
+               placeholder="Enter monthly price"
+               required>
+
+        <br><br>
+
+        <label for="facilities">Facilities</label>
+        <textarea id="facilities"
+                  name="facilities"
+                  rows="3"
+                  placeholder="e.g., AC, WiFi, Private bathroom, Laundry on-site">{% if room and room.facilities %}{{ room.facilities }}{% endif %}</textarea>
+
+        <br><br>
+
+        <label for="available">Availability</label>
+        {% set available_val = room.available if room is not none else 1 %}
+        <select id="available" name="available">
+            <option value="1" {% if available_val %}selected{% endif %}>Available</option>
+            <option value="0" {% if not available_val %}selected{% endif %}>Unavailable</option>
+        </select>
+
+        <br><br>
+
+        <div class="room-form-actions">
+            <a href="/admin/rooms" class="btn btn-secondary room-cancel-btn">Cancel</a>
+            <button type="submit" class="btn room-submit-btn">
+                {{ 'Save Changes' if room else 'Create Room' }}
+            </button>
+        </div>
+
+    </form>
+
+</div>
+
+<style>
+.room-form-container {
+    max-width: 640px;
+    margin: 2rem auto 3rem;
+}
+
+.room-form-subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.room-back-link {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 1.5rem;
+}
+
+.room-back-link:hover {
+    color: var(--accent-gold);
+}
+
+.room-form label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--primary-dark);
+}
+
+.room-form input,
+.room-form select,
+.room-form textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.room-form textarea {
+    resize: vertical;
+}
+
+.room-form-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.room-cancel-btn {
+    flex: 0 0 auto;
+}
+
+.room-submit-btn {
+    flex: 1;
+}
+
+@media (max-width: 640px) {
+    .room-form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .room-submit-btn,
+    .room-cancel-btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+</style>
+
+{% endblock %}
+

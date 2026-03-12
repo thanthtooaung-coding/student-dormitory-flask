@@ -92,6 +92,7 @@ def get_table_schema():
             'columns': [
                 ('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
                 ('student_id', 'INTEGER NOT NULL'),
+                ('booking_id', 'INTEGER NOT NULL'),
                 ('facility_name', 'TEXT NOT NULL'),
                 ('booking_date', 'TEXT NOT NULL')
             ]
@@ -110,6 +111,7 @@ def get_table_schema():
             'columns': [
                 ('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
                 ('student_id', 'INTEGER NOT NULL'),
+                ('booking_id', 'INTEGER NOT NULL'),
                 ('visitor_name', 'TEXT NOT NULL'),
                 ('visit_date', 'TEXT NOT NULL'),
                 ('visit_time', 'TEXT NOT NULL')

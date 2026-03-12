@@ -164,13 +164,14 @@ class Parcel:
 
 
 class FacilityBooking:
-    """Facility Booking model for booking facilities"""
+    """Facility Booking model for booking facilities (linked to room booking via booking_id)"""
     
-    def __init__(self, facility_id, facility_name, booking_date, student_id=None):
+    def __init__(self, facility_id, facility_name, booking_date, student_id=None, booking_id=None):
         self.facility_id = facility_id
         self.facility_name = facility_name
         self.booking_date = booking_date
         self.student_id = student_id
+        self.booking_id = booking_id
     
     def reserve_facility(self):
         """Reserve a facility"""
@@ -204,14 +205,15 @@ class RepairRequest:
 
 
 class Visitor:
-    """Visitor model representing a visitor"""
+    """Visitor model representing a visitor (linked to room booking via booking_id)"""
     
-    def __init__(self, visitor_id, visitor_name, visit_date, visit_time, student_id=None):
+    def __init__(self, visitor_id, visitor_name, visit_date, visit_time, student_id=None, booking_id=None):
         self.visitor_id = visitor_id
         self.visitor_name = visitor_name
         self.visit_date = visit_date
         self.visit_time = visit_time
         self.student_id = student_id
+        self.booking_id = booking_id
     
     def register_visitor(self):
         """Register a visitor"""

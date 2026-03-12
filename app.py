@@ -3,9 +3,85 @@ from db import get_db_connection
 from datetime import datetime, date
 from functools import wraps
 import sqlite3
+import io
+import base64
+
+import qrcode
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production'
+
+PROMPTPAY_ID = "0123456789"  # TODO: replace with your real PromptPay ID/phone
+
+
+def _tlv(tag, value):
+    length = f"{len(value):02d}"
+    return f"{tag}{length}{value}"
+
+
+def _crc16(payload: str) -> str:
+    """CRC16-CCITT (0x1021) for PromptPay payload."""
+    crc = 0xFFFF
+    for ch in payload:
+        crc ^= ord(ch) << 8
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = (crc << 1) ^ 0x1021
+            else:
+                crc <<= 1
+            crc &= 0xFFFF
+    return f"{crc:04X}"
+
+
+def generate_promptpay_payload(target_id: str, amount: float, reference: str = "") -> str:
+    """
+    Build an EMVCo / Thai PromptPay payload including fixed amount.
+    `target_id` can be phone (starting with 0) or national ID.
+    """
+    # Merchant account information (PromptPay)
+    aid = _tlv("00", "A000000677010111")
+
+    # Phone number: convert 0XXXXXXXXX -> 66XXXXXXXXX (without leading 0)
+    account = target_id
+    if account.startswith("0") and len(account) == 10:
+        account = "66" + account[1:]
+
+    mai_sub = aid + _tlv("01", account)
+    mai = _tlv("29", mai_sub)
+
+    payload = ""
+    payload += _tlv("00", "01")        # Payload format indicator
+    payload += _tlv("01", "11")        # Dynamic QR
+    payload += mai
+    payload += _tlv("52", "0000")      # Merchant category code
+    payload += _tlv("53", "764")       # Currency: THB
+
+    amount_str = f"{amount:.2f}"
+    payload += _tlv("54", amount_str)  # Amount
+
+    payload += _tlv("58", "TH")        # Country
+    payload += _tlv("59", "KMITL STAYLINK")[:_tlv("59", "KMITL STAYLINK").find("59")+2+2+25]  # ensure <=25 chars
+    payload += _tlv("60", "BANGKOK")   # City
+
+    if reference:
+        additional = _tlv("01", reference[:25])
+        payload += _tlv("62", additional)
+
+    # Append CRC placeholder and then real CRC
+    payload_with_crc = payload + "6304"
+    crc = _crc16(payload_with_crc)
+    return payload_with_crc + crc
+
+
+def generate_promptpay_qr_base64(target_id: str, amount: float, reference: str = "") -> str:
+    payload = generate_promptpay_payload(target_id, amount, reference)
+    qr = qrcode.QRCode(box_size=6, border=2)
+    qr.add_data(payload)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode("ascii")
 
 @app.context_processor
 def inject_current_year():
@@ -350,7 +426,7 @@ def booking(room_id):
             # Create booking
             cursor.execute(
                 "INSERT INTO bookings (student_id, room_id, checkin_date, booking_status) VALUES (?, ?, ?, ?)",
-                (session['student_id'], room_id, checkin_date, 'pending')
+                (session['student_id'], room_id, checkin_date, 'awaiting_payment')
             )
             booking_id = cursor.lastrowid
             
@@ -385,17 +461,27 @@ def payment(booking_id):
         (booking_id, session['student_id'])
     )
     booking = cursor.fetchone()
-    
+
     if not booking:
         flash("Booking not found", "error")
         return redirect(url_for('dashboard'))
+
+    # Generate PromptPay QR (amount + booking reference)
+    try:
+        promptpay_qr_data = generate_promptpay_qr_base64(
+            PROMPTPAY_ID,
+            float(booking["price"]),
+            reference=str(booking_id),
+        )
+    except Exception:
+        promptpay_qr_data = None
     
     if request.method == "POST":
         payment_method = request.form.get("payment_method")
         
         if not payment_method:
             flash("Please select a payment method", "error")
-            return render_template("payment.html", booking=booking)
+            return render_template("payment.html", booking=booking, promptpay_qr_data=promptpay_qr_data)
         
         try:
             # Create payment
@@ -403,10 +489,22 @@ def payment(booking_id):
                 "INSERT INTO payments (booking_id, amount, payment_method, payment_status) VALUES (?, ?, ?, ?)",
                 (booking_id, booking['price'], payment_method, 'completed')
             )
-            
-            # Update booking status
+
+            # Create initial rent bill for this booking
             cursor.execute(
-                "UPDATE bookings SET booking_status = 'confirmed' WHERE id = ?",
+                "INSERT INTO bills (student_id, type, amount, due_date, status) VALUES (?, ?, ?, ?, ?)",
+                (
+                    session['student_id'],
+                    "Monthly Rent",
+                    booking['price'],
+                    date.today().isoformat(),
+                    "pending",
+                ),
+            )
+            
+            # After successful payment, mark booking as pending manager approval
+            cursor.execute(
+                "UPDATE bookings SET booking_status = 'pending' WHERE id = ?",
                 (booking_id,)
             )
             
@@ -420,7 +518,7 @@ def payment(booking_id):
             flash("Payment failed. Please try again.", "error")
     
     conn.close()
-    return render_template("payment.html", booking=booking)
+    return render_template("payment.html", booking=booking, promptpay_qr_data=promptpay_qr_data)
 
 # BOOKING CONFIRMATION
 @app.route("/confirmation/<int:booking_id>")
@@ -460,7 +558,8 @@ def my_unit():
            FROM bookings b 
            JOIN rooms r ON b.room_id = r.id 
            JOIN hostels h ON r.hostel_id = h.id 
-           WHERE b.student_id = ? AND b.booking_status = 'confirmed'
+           WHERE b.student_id = ?
+             AND b.booking_status IN ('pending', 'confirmed')
            ORDER BY b.checkin_date DESC""",
         (session['student_id'],)
     )
@@ -512,24 +611,39 @@ def parcels():
     conn.close()
     return render_template("parcels.html", parcels=parcels)
 
+# Helper: student's confirmed room bookings (for facility/visitor linking)
+def _get_room_bookings(cursor):
+    cursor.execute(
+        """SELECT b.id, b.checkin_date, r.room_type, h.name as hostel_name
+           FROM bookings b
+           JOIN rooms r ON b.room_id = r.id
+           JOIN hostels h ON r.hostel_id = h.id
+           WHERE b.student_id = ? AND b.booking_status = 'confirmed'
+           ORDER BY b.checkin_date DESC""",
+        (session['student_id'],)
+    )
+    return cursor.fetchall()
+
 # BOOK FACILITIES
 @app.route("/facility", methods=["GET", "POST"])
 @require_login
 def facility_booking():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+    room_bookings = _get_room_bookings(cursor)
+
     if request.method == "POST":
-        booking_id = request.form.get("booking_id")
+        facility_booking_id = request.form.get("facility_booking_id")
+        room_booking_id = request.form.get("room_booking_id")
         facility_name = request.form.get("facility_name")
         booking_date = request.form.get("booking_date")
         action = request.form.get("action")
-        
+
         if action == "delete":
             try:
                 cursor.execute(
                     "DELETE FROM facility_bookings WHERE id = ? AND student_id = ?",
-                    (booking_id, session['student_id'])
+                    (facility_booking_id, session['student_id'])
                 )
                 conn.commit()
                 flash("Facility booking deleted successfully", "success")
@@ -537,7 +651,7 @@ def facility_booking():
                 conn.rollback()
                 flash("Error deleting booking. Please try again.", "error")
         elif action == "edit":
-            if not facility_name or not booking_date:
+            if not facility_name or not booking_date or not room_booking_id:
                 flash("Please fill in all fields", "error")
             else:
                 today = date.today().isoformat()
@@ -545,81 +659,151 @@ def facility_booking():
                     flash("Cannot book facilities for past dates", "error")
                 else:
                     try:
+                        # Prevent duplicate facility bookings on the same date for the same stay
                         cursor.execute(
-                            "UPDATE facility_bookings SET facility_name = ?, booking_date = ? WHERE id = ? AND student_id = ?",
-                            (facility_name, booking_date, booking_id, session['student_id'])
+                            """
+                            SELECT COUNT(*) FROM facility_bookings
+                            WHERE student_id = ?
+                              AND booking_id = ?
+                              AND facility_name = ?
+                              AND booking_date = ?
+                              AND id != ?
+                            """,
+                            (
+                                session['student_id'],
+                                room_booking_id,
+                                facility_name,
+                                booking_date,
+                                facility_booking_id,
+                            ),
                         )
-                        conn.commit()
-                        flash("Facility booking updated successfully", "success")
+                        if cursor.fetchone()[0] > 0:
+                            flash(
+                                "You already booked this facility for this stay on that date.",
+                                "error",
+                            )
+                        else:
+                            cursor.execute(
+                                "UPDATE facility_bookings SET booking_id = ?, facility_name = ?, booking_date = ? WHERE id = ? AND student_id = ?",
+                                (
+                                    room_booking_id,
+                                    facility_name,
+                                    booking_date,
+                                    facility_booking_id,
+                                    session['student_id'],
+                                ),
+                            )
+                            conn.commit()
+                            flash("Facility booking updated successfully", "success")
                     except Exception as e:
                         conn.rollback()
                         flash("Error updating booking. Please try again.", "error")
         else:
-            if not facility_name or not booking_date:
-                flash("Please fill in all fields", "error")
-                bookings = cursor.execute(
-                    "SELECT * FROM facility_bookings WHERE student_id = ? ORDER BY booking_date DESC",
+            if not facility_name or not booking_date or not room_booking_id:
+                flash("Please fill in all fields including Your stay", "error")
+                cursor.execute(
+                    """SELECT fb.*, b.checkin_date as room_checkin, r.room_type, h.name as hostel_name
+                       FROM facility_bookings fb
+                       JOIN bookings b ON fb.booking_id = b.id
+                       JOIN rooms r ON b.room_id = r.id
+                       JOIN hostels h ON r.hostel_id = h.id
+                       WHERE fb.student_id = ? ORDER BY fb.booking_date DESC""",
                     (session['student_id'],)
-                ).fetchall()
+                )
+                bookings = cursor.fetchall()
                 conn.close()
-                return render_template("facility_booking.html", bookings=bookings)
-            
+                return render_template("facility_booking.html", bookings=bookings, room_bookings=room_bookings)
             today = date.today().isoformat()
             if booking_date < today:
                 flash("Cannot book facilities for past dates", "error")
-                bookings = cursor.execute(
-                    "SELECT * FROM facility_bookings WHERE student_id = ? ORDER BY booking_date DESC",
+                cursor.execute(
+                    """SELECT fb.*, b.checkin_date as room_checkin, r.room_type, h.name as hostel_name
+                       FROM facility_bookings fb
+                       JOIN bookings b ON fb.booking_id = b.id
+                       JOIN rooms r ON b.room_id = r.id
+                       JOIN hostels h ON r.hostel_id = h.id
+                       WHERE fb.student_id = ? ORDER BY fb.booking_date DESC""",
                     (session['student_id'],)
-                ).fetchall()
+                )
+                bookings = cursor.fetchall()
                 conn.close()
-                return render_template("facility_booking.html", bookings=bookings)
-            
+                return render_template("facility_booking.html", bookings=bookings, room_bookings=room_bookings)
             try:
                 cursor.execute(
-                    "INSERT INTO facility_bookings (student_id, facility_name, booking_date) VALUES (?, ?, ?)",
-                    (session['student_id'], facility_name, booking_date)
+                    "SELECT id FROM bookings WHERE id = ? AND student_id = ? AND booking_status = 'confirmed'",
+                    (room_booking_id, session['student_id'])
                 )
-                conn.commit()
-                flash("Facility booked successfully", "success")
+                if not cursor.fetchone():
+                    flash("Invalid room booking selected.", "error")
+                else:
+                    # Prevent duplicate facility bookings on the same date for the same stay
+                    cursor.execute(
+                        """
+                        SELECT COUNT(*) FROM facility_bookings
+                        WHERE student_id = ?
+                          AND booking_id = ?
+                          AND facility_name = ?
+                          AND booking_date = ?
+                        """,
+                        (session['student_id'], room_booking_id, facility_name, booking_date),
+                    )
+                    if cursor.fetchone()[0] > 0:
+                        flash(
+                            "You already booked this facility for this stay on that date.",
+                            "error",
+                        )
+                    else:
+                        cursor.execute(
+                            "INSERT INTO facility_bookings (student_id, booking_id, facility_name, booking_date) VALUES (?, ?, ?, ?)",
+                            (session['student_id'], room_booking_id, facility_name, booking_date)
+                        )
+                        conn.commit()
+                        flash("Facility booked successfully", "success")
             except Exception as e:
                 conn.rollback()
                 flash("Error booking facility. Please try again.", "error")
-    
+
     cursor.execute(
-        "SELECT * FROM facility_bookings WHERE student_id = ? ORDER BY booking_date DESC",
+        """SELECT fb.*, b.checkin_date as room_checkin, r.room_type, h.name as hostel_name
+           FROM facility_bookings fb
+           JOIN bookings b ON fb.booking_id = b.id
+           JOIN rooms r ON b.room_id = r.id
+           JOIN hostels h ON r.hostel_id = h.id
+           WHERE fb.student_id = ? ORDER BY fb.booking_date DESC""",
         (session['student_id'],)
     )
     bookings = cursor.fetchall()
-    
     conn.close()
-    return render_template("facility_booking.html", bookings=bookings)
+    return render_template("facility_booking.html", bookings=bookings, room_bookings=room_bookings)
 
 # EDIT FACILITY BOOKING
-@app.route("/facility/edit/<int:booking_id>")
+@app.route("/facility/edit/<int:facility_booking_id>")
 @require_login
-def edit_facility_booking(booking_id):
+def edit_facility_booking(facility_booking_id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+    room_bookings = _get_room_bookings(cursor)
     cursor.execute(
         "SELECT * FROM facility_bookings WHERE id = ? AND student_id = ?",
-        (booking_id, session['student_id'])
+        (facility_booking_id, session['student_id'])
     )
     booking = cursor.fetchone()
-    
     if not booking:
         flash("Booking not found", "error")
         conn.close()
         return redirect(url_for('facility_booking'))
-    
     cursor.execute(
-        "SELECT * FROM facility_bookings WHERE student_id = ? ORDER BY booking_date DESC",
+        """SELECT fb.*, b.checkin_date as room_checkin, r.room_type, h.name as hostel_name
+           FROM facility_bookings fb
+           JOIN bookings b ON fb.booking_id = b.id
+           JOIN rooms r ON b.room_id = r.id
+           JOIN hostels h ON r.hostel_id = h.id
+           WHERE fb.student_id = ? ORDER BY fb.booking_date DESC""",
         (session['student_id'],)
     )
     bookings = cursor.fetchall()
-    
     conn.close()
-    return render_template("facility_booking.html", bookings=bookings, editing_booking=booking)
+    return render_template("facility_booking.html", bookings=bookings, room_bookings=room_bookings, editing_booking=booking)
 
 # SUBMIT REPAIR REQUEST
 @app.route("/repair", methods=["GET", "POST"])
@@ -723,14 +907,16 @@ def edit_repair_request(request_id):
 def visitor():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+    room_bookings = _get_room_bookings(cursor)
+
     if request.method == "POST":
         visitor_id = request.form.get("visitor_id")
+        room_booking_id = request.form.get("room_booking_id")
         visitor_name = request.form.get("visitor_name")
         visit_date = request.form.get("visit_date")
         visit_time = request.form.get("visit_time")
         action = request.form.get("action")
-        
+
         if action == "delete":
             try:
                 cursor.execute(
@@ -743,7 +929,7 @@ def visitor():
                 conn.rollback()
                 flash("Error deleting visitor. Please try again.", "error")
         elif action == "edit":
-            if not all([visitor_name, visit_date, visit_time]):
+            if not all([visitor_name, visit_date, visit_time, room_booking_id]):
                 flash("Please fill in all fields", "error")
             else:
                 try:
@@ -752,8 +938,8 @@ def visitor():
                         flash("Cannot register visitors for past date/time", "error")
                     else:
                         cursor.execute(
-                            "UPDATE visitors SET visitor_name = ?, visit_date = ?, visit_time = ? WHERE id = ? AND student_id = ?",
-                            (visitor_name, visit_date, visit_time, visitor_id, session['student_id'])
+                            "UPDATE visitors SET booking_id = ?, visitor_name = ?, visit_date = ?, visit_time = ? WHERE id = ? AND student_id = ?",
+                            (room_booking_id, visitor_name, visit_date, visit_time, visitor_id, session['student_id'])
                         )
                         conn.commit()
                         flash("Visitor registration updated successfully", "success")
@@ -763,52 +949,79 @@ def visitor():
                     conn.rollback()
                     flash("Error updating visitor. Please try again.", "error")
         else:
-            if not all([visitor_name, visit_date, visit_time]):
-                flash("Please fill in all fields", "error")
-                visitors = cursor.execute(
-                    "SELECT * FROM visitors WHERE student_id = ? ORDER BY visit_date DESC",
+            if not all([visitor_name, visit_date, visit_time, room_booking_id]):
+                flash("Please fill in all fields including Your stay", "error")
+                cursor.execute(
+                    """SELECT v.*, b.checkin_date as room_checkin, r.room_type, h.name as hostel_name
+                       FROM visitors v
+                       JOIN bookings b ON v.booking_id = b.id
+                       JOIN rooms r ON b.room_id = r.id
+                       JOIN hostels h ON r.hostel_id = h.id
+                       WHERE v.student_id = ? ORDER BY v.visit_date DESC""",
                     (session['student_id'],)
-                ).fetchall()
+                )
+                visitors = cursor.fetchall()
                 conn.close()
-                return render_template("visitor.html", visitors=visitors)
-            
+                return render_template("visitor.html", visitors=visitors, room_bookings=room_bookings)
             try:
                 visit_datetime = datetime.strptime(f"{visit_date} {visit_time}", "%Y-%m-%d %H:%M")
                 if visit_datetime < datetime.now():
                     flash("Cannot register visitors for past date/time", "error")
-                    visitors = cursor.execute(
-                        "SELECT * FROM visitors WHERE student_id = ? ORDER BY visit_date DESC",
+                    cursor.execute(
+                        """SELECT v.*, b.checkin_date as room_checkin, r.room_type, h.name as hostel_name
+                           FROM visitors v
+                           JOIN bookings b ON v.booking_id = b.id
+                           JOIN rooms r ON b.room_id = r.id
+                           JOIN hostels h ON r.hostel_id = h.id
+                           WHERE v.student_id = ? ORDER BY v.visit_date DESC""",
                         (session['student_id'],)
-                    ).fetchall()
+                    )
+                    visitors = cursor.fetchall()
                     conn.close()
-                    return render_template("visitor.html", visitors=visitors)
-                
+                    return render_template("visitor.html", visitors=visitors, room_bookings=room_bookings)
                 cursor.execute(
-                    "INSERT INTO visitors (student_id, visitor_name, visit_date, visit_time) VALUES (?, ?, ?, ?)",
-                    (session['student_id'], visitor_name, visit_date, visit_time)
+                    "SELECT id FROM bookings WHERE id = ? AND student_id = ? AND booking_status = 'confirmed'",
+                    (room_booking_id, session['student_id'])
                 )
-                conn.commit()
-                flash("Visitor registered successfully", "success")
+                if not cursor.fetchone():
+                    flash("Invalid room booking selected.", "error")
+                else:
+                    cursor.execute(
+                        "INSERT INTO visitors (student_id, booking_id, visitor_name, visit_date, visit_time) VALUES (?, ?, ?, ?, ?)",
+                        (session['student_id'], room_booking_id, visitor_name, visit_date, visit_time)
+                    )
+                    conn.commit()
+                    flash("Visitor registered successfully", "success")
             except ValueError:
                 flash("Invalid date or time format", "error")
-                visitors = cursor.execute(
-                    "SELECT * FROM visitors WHERE student_id = ? ORDER BY visit_date DESC",
+                cursor.execute(
+                    """SELECT v.*, b.checkin_date as room_checkin, r.room_type, h.name as hostel_name
+                       FROM visitors v
+                       JOIN bookings b ON v.booking_id = b.id
+                       JOIN rooms r ON b.room_id = r.id
+                       JOIN hostels h ON r.hostel_id = h.id
+                       WHERE v.student_id = ? ORDER BY v.visit_date DESC""",
                     (session['student_id'],)
-                ).fetchall()
+                )
+                visitors = cursor.fetchall()
                 conn.close()
-                return render_template("visitor.html", visitors=visitors)
+                return render_template("visitor.html", visitors=visitors, room_bookings=room_bookings)
             except Exception as e:
                 conn.rollback()
                 flash("Error registering visitor. Please try again.", "error")
-    
+
     cursor.execute(
-        "SELECT * FROM visitors WHERE student_id = ? ORDER BY visit_date DESC",
+        """SELECT v.*, b.checkin_date as room_checkin, r.room_type, h.name as hostel_name
+           FROM visitors v
+           JOIN bookings b ON v.booking_id = b.id
+           JOIN rooms r ON b.room_id = r.id
+           JOIN hostels h ON r.hostel_id = h.id
+           WHERE v.student_id = ? ORDER BY v.visit_date DESC""",
         (session['student_id'],)
     )
     visitors = cursor.fetchall()
-    
     conn.close()
-    return render_template("visitor.html", visitors=visitors)
+    return render_template("visitor.html", visitors=visitors, room_bookings=room_bookings)
 
 # EDIT VISITOR
 @app.route("/visitor/edit/<int:visitor_id>")
@@ -816,26 +1029,28 @@ def visitor():
 def edit_visitor(visitor_id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+    room_bookings = _get_room_bookings(cursor)
     cursor.execute(
         "SELECT * FROM visitors WHERE id = ? AND student_id = ?",
         (visitor_id, session['student_id'])
     )
     visitor = cursor.fetchone()
-    
     if not visitor:
         flash("Visitor not found", "error")
         conn.close()
         return redirect(url_for('visitor'))
-    
     cursor.execute(
-        "SELECT * FROM visitors WHERE student_id = ? ORDER BY visit_date DESC",
+        """SELECT v.*, b.checkin_date as room_checkin, r.room_type, h.name as hostel_name
+           FROM visitors v
+           JOIN bookings b ON v.booking_id = b.id
+           JOIN rooms r ON b.room_id = r.id
+           JOIN hostels h ON r.hostel_id = h.id
+           WHERE v.student_id = ? ORDER BY v.visit_date DESC""",
         (session['student_id'],)
     )
     visitors = cursor.fetchall()
-    
     conn.close()
-    return render_template("visitor.html", visitors=visitors, editing_visitor=visitor)
+    return render_template("visitor.html", visitors=visitors, room_bookings=room_bookings, editing_visitor=visitor)
 
 # SEND SUGGESTION
 @app.route("/suggestion", methods=["GET", "POST"])
@@ -934,8 +1149,15 @@ def view_applications():
         JOIN students s ON b.student_id = s.id
         JOIN rooms r ON b.room_id = r.id
         JOIN hostels h ON r.hostel_id = h.id
-        WHERE b.booking_status = 'pending'
-        ORDER BY b.id DESC
+        ORDER BY 
+            CASE 
+                WHEN b.booking_status = 'pending' THEN 0
+                WHEN b.booking_status = 'awaiting_payment' THEN 1
+                WHEN b.booking_status = 'confirmed' THEN 2
+                WHEN b.booking_status = 'rejected' THEN 3
+                ELSE 4
+            END,
+            b.id DESC
     """)
     applications = cursor.fetchall()
     
@@ -994,11 +1216,50 @@ def manage_rooms():
     """)
     rooms = cursor.fetchall()
     
+    conn.close()
+    return render_template("admin_rooms.html", rooms=rooms)
+
+
+@app.route("/admin/rooms/new")
+@require_manager
+def new_room():
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM hostels ORDER BY name")
     hostels = cursor.fetchall()
-    
     conn.close()
-    return render_template("admin_rooms.html", rooms=rooms, hostels=hostels)
+    return render_template(
+        "admin_room_form.html",
+        room=None,
+        hostels=hostels,
+        form_action=url_for("save_room"),
+    )
+
+
+@app.route("/admin/rooms/<int:room_id>/edit")
+@require_manager
+def edit_room(room_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT r.*, h.name as hostel_name, h.location
+        FROM rooms r
+        JOIN hostels h ON r.hostel_id = h.id
+        WHERE r.id = ?
+    """, (room_id,))
+    room = cursor.fetchone()
+    cursor.execute("SELECT * FROM hostels ORDER BY name")
+    hostels = cursor.fetchall()
+    conn.close()
+    if not room:
+        flash("Room not found", "error")
+        return redirect(url_for("manage_rooms"))
+    return render_template(
+        "admin_room_form.html",
+        room=room,
+        hostels=hostels,
+        form_action=url_for("save_room", room_id=room_id),
+    )
 
 # ADD/EDIT ROOM
 @app.route("/admin/room", methods=["POST"])
@@ -1311,6 +1572,30 @@ def save_user(user_id=None):
                 flash("Password is required for new students", "error")
                 conn.close()
                 return redirect(url_for('manage_users', type='students'))
+
+            # Duplicate checks for students
+            if user_id:
+                cursor.execute("SELECT id FROM students WHERE email = ? AND id != ?", (email, user_id))
+                if cursor.fetchone():
+                    flash("Email already exists. Please use a different email address.", "error")
+                    conn.close()
+                    return redirect(url_for('manage_users', type='students'))
+                cursor.execute("SELECT id FROM students WHERE student_id = ? AND id != ?", (student_id, user_id))
+                if cursor.fetchone():
+                    flash("Student ID already exists. Please use a different Student ID.", "error")
+                    conn.close()
+                    return redirect(url_for('manage_users', type='students'))
+            else:
+                cursor.execute("SELECT id FROM students WHERE email = ?", (email,))
+                if cursor.fetchone():
+                    flash("Email already exists. Please use a different email address.", "error")
+                    conn.close()
+                    return redirect(url_for('manage_users', type='students'))
+                cursor.execute("SELECT id FROM students WHERE student_id = ?", (student_id,))
+                if cursor.fetchone():
+                    flash("Student ID already exists. Please use a different Student ID.", "error")
+                    conn.close()
+                    return redirect(url_for('manage_users', type='students'))
             
             if user_id:
                 if password:
@@ -1344,6 +1629,30 @@ def save_user(user_id=None):
                 flash("Password is required for new managers", "error")
                 conn.close()
                 return redirect(url_for('manage_users', type='managers'))
+
+            # Duplicate checks for managers
+            if user_id:
+                cursor.execute("SELECT id FROM dorm_managers WHERE email = ? AND id != ?", (email, user_id))
+                if cursor.fetchone():
+                    flash("Email already exists. Please use a different email address.", "error")
+                    conn.close()
+                    return redirect(url_for('manage_users', type='managers'))
+                cursor.execute("SELECT id FROM dorm_managers WHERE manager_id = ? AND id != ?", (manager_id, user_id))
+                if cursor.fetchone():
+                    flash("Manager ID already exists. Please use a different Manager ID.", "error")
+                    conn.close()
+                    return redirect(url_for('manage_users', type='managers'))
+            else:
+                cursor.execute("SELECT id FROM dorm_managers WHERE email = ?", (email,))
+                if cursor.fetchone():
+                    flash("Email already exists. Please use a different email address.", "error")
+                    conn.close()
+                    return redirect(url_for('manage_users', type='managers'))
+                cursor.execute("SELECT id FROM dorm_managers WHERE manager_id = ?", (manager_id,))
+                if cursor.fetchone():
+                    flash("Manager ID already exists. Please use a different Manager ID.", "error")
+                    conn.close()
+                    return redirect(url_for('manage_users', type='managers'))
             
             if user_id:
                 if password:

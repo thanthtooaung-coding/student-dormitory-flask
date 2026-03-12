@@ -17,7 +17,7 @@
         <table class="admin-table">
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>#</th>
                     <th>Name</th>
                     <th>Email</th>
                     {% if user_type == 'students' %}
@@ -36,7 +36,7 @@
                 {% if users %}
                     {% for user in users %}
                     <tr>
-                        <td>{{ user.id }}</td>
+                        <td>{{ loop.index }}</td>
                         <td>{{ user.name }}</td>
                         <td>{{ user.email }}</td>
                         {% if user_type == 'students' %}
@@ -94,7 +94,7 @@
 <div id="userModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 id="modalTitle">Add {{ user_type_name[:-1] }}</h2>
+            <h2 id="modalTitle" class="modal-title">Add {{ user_type_name[:-1] }}</h2>
             <span class="close" onclick="closeUserModal()">&times;</span>
         </div>
         <form id="userForm" method="POST" action="/super-admin/user">
@@ -120,13 +120,51 @@
             
             <div class="form-group">
                 <label>Email *</label>
-                <input type="email" name="email" id="email" required>
+                <input type="email" name="email" id="email" required
+                       pattern="^[a-zA-Z0-9._%+-]+@kmitl\.ac\.th$"
+                       placeholder="example@kmitl.ac.th">
+                <div class="email-validation" id="emailValidation" style="display: none;">
+                    <p class="validation-message" id="emailValidationMessage"></p>
+                </div>
             </div>
             
             <div class="form-group">
                 <label>Password <span id="passwordRequired">*</span></label>
-                <input type="password" name="password" id="password">
+                <div class="password-input-wrapper">
+                    <input type="password" name="password" id="password" class="password-input">
+                    <button type="button" class="password-toggle" id="passwordToggle" aria-label="Toggle password visibility">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="eye-icon">
+                            <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="eye-off-icon" style="display: none;">
+                            <path d="M17.94 17.94C16.2306 19.243 14.1491 19.9649 12 20C5 20 1 12 1 12C2.24389 9.68192 3.96914 7.65663 6.06 6.06M9.9 4.24C10.5883 4.0789 11.2931 3.99836 12 4C19 4 23 12 23 12C22.393 13.1356 21.6691 14.2048 20.84 15.19M14.12 14.12C13.8454 14.4148 13.5141 14.6512 13.1462 14.8151C12.7782 14.9791 12.3809 15.0673 11.9781 15.0744C11.5753 15.0815 11.1751 15.0074 10.8016 14.8565C10.4281 14.7056 10.0887 14.481 9.80385 14.1962C9.51897 13.9113 9.29439 13.5719 9.14351 13.1984C8.99262 12.8249 8.91853 12.4247 8.92563 12.0219C8.93274 11.6191 9.02091 11.2218 9.18488 10.8538C9.34884 10.4859 9.58525 10.1546 9.88 9.88" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M1 1L23 23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
                 <small id="passwordHint">Leave blank to keep existing password when editing</small>
+                <div class="password-requirements">
+                    <p class="requirements-title">PASSWORD MUST CONTAIN:</p>
+                    <ul class="requirements-list">
+                        <li class="requirement" id="req-length">
+                            <span class="check-icon"></span>
+                            <span class="requirement-text">At least 8 characters</span>
+                        </li>
+                        <li class="requirement" id="req-uppercase">
+                            <span class="check-icon"></span>
+                            <span class="requirement-text">At least one uppercase letter</span>
+                        </li>
+                        <li class="requirement" id="req-lowercase">
+                            <span class="check-icon"></span>
+                            <span class="requirement-text">At least one lowercase letter</span>
+                        </li>
+                        <li class="requirement" id="req-number">
+                            <span class="check-icon"></span>
+                            <span class="requirement-text">At least one number</span>
+                        </li>
+                    </ul>
+                </div>
             </div>
             
             {% if user_type == 'students' %}
@@ -229,6 +267,124 @@ document.addEventListener('click', function(event) {
         });
     }
 });
+
+// Password visibility toggle (reuse signup behavior)
+const adminPasswordInput = document.getElementById('password');
+const adminPasswordToggle = document.getElementById('passwordToggle');
+if (adminPasswordInput && adminPasswordToggle) {
+    const adminEyeIcon = adminPasswordToggle.querySelector('.eye-icon');
+    const adminEyeOffIcon = adminPasswordToggle.querySelector('.eye-off-icon');
+    
+    adminPasswordToggle.addEventListener('click', function() {
+        if (adminPasswordInput.type === 'password') {
+            adminPasswordInput.type = 'text';
+            adminEyeIcon.style.display = 'none';
+            adminEyeOffIcon.style.display = 'block';
+        } else {
+            adminPasswordInput.type = 'password';
+            adminEyeIcon.style.display = 'block';
+            adminEyeOffIcon.style.display = 'none';
+        }
+    });
+    
+    // Password strength checks (length / upper / lower / number)
+    adminPasswordInput.addEventListener('input', function() {
+        const password = adminPasswordInput.value;
+        const reqLength = document.getElementById('req-length');
+        const reqUppercase = document.getElementById('req-uppercase');
+        const reqLowercase = document.getElementById('req-lowercase');
+        const reqNumber = document.getElementById('req-number');
+        
+        if (reqLength) {
+            password.length >= 8 ? reqLength.classList.add('valid') : reqLength.classList.remove('valid');
+        }
+        if (reqUppercase) {
+            /[A-Z]/.test(password) ? reqUppercase.classList.add('valid') : reqUppercase.classList.remove('valid');
+        }
+        if (reqLowercase) {
+            /[a-z]/.test(password) ? reqLowercase.classList.add('valid') : reqLowercase.classList.remove('valid');
+        }
+        if (reqNumber) {
+            /[0-9]/.test(password) ? reqNumber.classList.add('valid') : reqNumber.classList.remove('valid');
+        }
+    });
+}
+
+// Email validation (KMITL + duplicate check like signup)
+const adminEmailInput = document.getElementById('email');
+const adminEmailValidation = document.getElementById('emailValidation');
+const adminEmailValidationMessage = document.getElementById('emailValidationMessage');
+const adminKmitlEmailPattern = /^[a-zA-Z0-9._%+-]+@kmitl\.ac\.th$/;
+let adminEmailDuplicateCheckTimeout;
+
+function checkDuplicateEmailForAdmin(email) {
+    clearTimeout(adminEmailDuplicateCheckTimeout);
+    adminEmailDuplicateCheckTimeout = setTimeout(() => {
+        fetch(`/check-email?email=${encodeURIComponent(email)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    adminEmailInput.classList.remove('valid');
+                    adminEmailInput.classList.add('invalid');
+                    adminEmailValidationMessage.textContent = '✗ Email already exists';
+                    adminEmailValidationMessage.className = 'validation-message invalid';
+                } else {
+                    adminEmailInput.classList.remove('invalid');
+                    adminEmailInput.classList.add('valid');
+                    adminEmailValidationMessage.textContent = '✓ Valid KMITL email address';
+                    adminEmailValidationMessage.className = 'validation-message valid';
+                }
+            })
+            .catch(() => {
+                // fail silently for admins
+            });
+    }, 500);
+}
+
+if (adminEmailInput) {
+    adminEmailInput.addEventListener('input', function() {
+        const email = adminEmailInput.value.trim();
+        
+        if (email.length === 0) {
+            adminEmailValidation.style.display = 'none';
+            adminEmailInput.classList.remove('invalid', 'valid');
+            clearTimeout(adminEmailDuplicateCheckTimeout);
+            return;
+        }
+        
+        adminEmailValidation.style.display = 'block';
+        
+        if (adminKmitlEmailPattern.test(email)) {
+            checkDuplicateEmailForAdmin(email);
+        } else if (email.includes('@')) {
+            adminEmailInput.classList.remove('valid');
+            adminEmailInput.classList.add('invalid');
+            adminEmailValidationMessage.textContent = '✗ Email must end with @kmitl.ac.th';
+            adminEmailValidationMessage.className = 'validation-message invalid';
+            clearTimeout(adminEmailDuplicateCheckTimeout);
+        } else {
+            adminEmailInput.classList.remove('valid', 'invalid');
+            adminEmailValidationMessage.textContent = 'Please enter a valid email address';
+            adminEmailValidationMessage.className = 'validation-message';
+            clearTimeout(adminEmailDuplicateCheckTimeout);
+        }
+    });
+    
+    adminEmailInput.addEventListener('blur', function() {
+        const email = adminEmailInput.value.trim();
+        if (email.length > 0 && !adminKmitlEmailPattern.test(email)) {
+            adminEmailInput.setCustomValidity('Email must be a valid KMITL email address (@kmitl.ac.th)');
+        } else {
+            adminEmailInput.setCustomValidity('');
+        }
+    });
+}
 </script>
+
+<style>
+.modal-title {
+    color: #ffffff;
+}
+</style>
 
 {% endblock %}

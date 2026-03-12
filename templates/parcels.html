@@ -13,7 +13,7 @@
         <div class="parcel-card">
             <div class="parcel-header">
                 <div>
-                    <h3>Parcel #{{ parcel.id }}</h3>
+                    <h3>Parcel #{{ loop.index }}</h3>
                     <p class="sender">From: {{ parcel.sender }}</p>
                 </div>
                 <span class="status-badge status-{{ parcel.status }}">{{ parcel.status|replace('_', ' ')|title }}</span>

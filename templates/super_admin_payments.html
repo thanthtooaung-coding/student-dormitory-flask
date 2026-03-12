@@ -20,7 +20,7 @@
         <table class="admin-table">
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>#</th>
                     <th>Student</th>
                     <th>Email</th>
                     <th>Hostel</th>
@@ -35,7 +35,7 @@
                 {% if payments %}
                     {% for payment in payments %}
                     <tr>
-                        <td>{{ payment.id }}</td>
+                        <td>{{ loop.index }}</td>
                         <td>{{ payment.student_name or '-' }}</td>
                         <td>{{ payment.student_email or '-' }}</td>
                         <td>{{ payment.hostel_name or '-' }}</td>
