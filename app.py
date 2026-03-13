@@ -1340,6 +1340,54 @@ def view_repairs():
     conn.close()
     return render_template("admin_repairs.html", repairs=repairs)
 
+# MANAGER - REGISTER PARCELS
+@app.route("/admin/parcels", methods=["GET", "POST"])
+@require_manager
+def admin_parcels():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    if request.method == "POST":
+        student_code = request.form.get("student_id")
+        sender = request.form.get("sender")
+        arrival_date = request.form.get("arrival_date")
+        status = request.form.get("status") or "pending"
+
+        if not all([student_code, sender, arrival_date]):
+            flash("Please fill in Student ID, Sender, and Arrival Date.", "error")
+        else:
+            # Find student by student_id code
+            cursor.execute(
+                "SELECT id, name FROM students WHERE student_id = ?",
+                (student_code,)
+            )
+            student = cursor.fetchone()
+            if not student:
+                flash("Student not found for the provided Student ID.", "error")
+            else:
+                try:
+                    cursor.execute(
+                        "INSERT INTO parcels (student_id, sender, arrival_date, status) VALUES (?, ?, ?, ?)",
+                        (student["id"], sender, arrival_date, status),
+                    )
+                    conn.commit()
+                    flash(f"Parcel registered for {student['name']}.", "success")
+                except Exception:
+                    conn.rollback()
+                    flash("Error registering parcel. Please try again.", "error")
+
+    cursor.execute(
+        """
+        SELECT p.*, s.student_id AS student_code, s.name AS student_name
+        FROM parcels p
+        JOIN students s ON p.student_id = s.id
+        ORDER BY p.arrival_date DESC, p.id DESC
+        """
+    )
+    parcels = cursor.fetchall()
+    conn.close()
+    return render_template("admin_parcels.html", parcels=parcels)
+
 # UPDATE REPAIR STATUS
 @app.route("/admin/repair/<int:repair_id>/update", methods=["POST"])
 @require_manager
